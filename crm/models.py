@@ -30,7 +30,9 @@ class Event(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     # One to one avec Contract, pour faire un Many Event to One Contract, enlever le unique=True
-    contract_id = Column(Integer, ForeignKey("contracts.id"), unique=True)
+    contract_id = Column(
+        Integer, ForeignKey("contracts.id"), unique=True, nullable=False
+    )
     support_contact_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     date_start = Column(DateTime, nullable=False)
@@ -81,7 +83,7 @@ class Client(Base):
         DateTime, default=datetime.datetime.now(datetime.timezone.utc)
     )
     # Many Client to One User
-    sales_contact_id = Column(Integer, ForeignKey("users.id"))
+    sales_contact_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     sales_contact = relationship("User", back_populates="clients")
     contracts = relationship("Contract", back_populates="client")
