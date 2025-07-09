@@ -1,8 +1,43 @@
 import pytest
 import datetime as dt
+import sqlite3
 from decimal import Decimal
 from crm import models  # Charge les classes sinon ne fonctionne pas
 from crm.models import User, Client, Contract, Event
+from sqlalchemy import create_engine, event
+from sqlalchemy.orm import sessionmaker
+from crm.database import Base
+
+
+TEST_URL = "sqlite+pysqlite:///:memory:"
+engine = create_engine(TEST_URL, echo=False, future=True)
+
+
+# Active les clés étrangères
+@event.listens_for(engine, "connect")
+def _enable_foreign_keys(dbapi_connection, _):
+    if isinstance(dbapi_connection, sqlite3.Connection):
+        dbapi_connection.execute("PRAGMA foreign_keys = ON")
+
+
+# Création des tables globalement
+Base.metadata.create_all(bind=engine)
+
+
+@pytest.fixture(scope="session")
+def engine_fixture():
+    return engine
+
+
+@pytest.fixture(scope="function")
+def db_session(engine_fixture):
+    Session = sessionmaker(bind=engine_fixture, autoflush=False)
+    session = Session()
+    try:
+        yield session
+    finally:
+        session.rollback()
+        session.close()
 
 
 @pytest.fixture

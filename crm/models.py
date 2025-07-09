@@ -1,12 +1,24 @@
 import re
 import datetime
 
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Numeric, Boolean
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    DateTime,
+    ForeignKey,
+    Numeric,
+    Boolean,
+    func,
+)
 from sqlalchemy.orm import relationship, validates
 from sqlalchemy import Enum as PgEnum
 from sqlalchemy import CheckConstraint
 from .database import Base
 from decimal import Decimal
+from functools import partial
+
+utcnow = partial(datetime.datetime.now, datetime.timezone.utc)
 
 
 class AbstractBase(Base):
@@ -14,15 +26,14 @@ class AbstractBase(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     created_at = Column(
-        DateTime,
-        default=datetime.datetime.now(datetime.timezone.utc),
+        DateTime(timezone=True),
+        default=utcnow,
         nullable=False,
-        required=True,
     )
     updated_at = Column(
-        DateTime,
-        default=datetime.datetime.now(datetime.timezone.utc),
-        onupdate=datetime.datetime.now(datetime.timezone.utc),
+        DateTime(timezone=True),
+        default=utcnow,
+        onupdate=utcnow,
         nullable=False,
     )
 
