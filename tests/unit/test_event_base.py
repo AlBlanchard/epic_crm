@@ -83,12 +83,12 @@ def test_event_end_before_start():
 
 def test_event_missing_contract(db_session):
     """Erreur si contract_id absent (clé étrangère requise)."""
-    e = Event(
+    event = Event(
         date_start=datetime(2025, 10, 1, 10),
         date_end=datetime(2025, 10, 1, 18),
         attendees=20,
         location="Nice",
     )
-    db_session.add(e)
+    db_session.add(event)
     with pytest.raises(IntegrityError):
         db_session.flush()
