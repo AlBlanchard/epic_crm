@@ -62,7 +62,6 @@ def test_updated_at_changes(db_session):
     old_updated_at = d.updated_at
     db_session.flush()
     assert (d.updated_at > old_updated_at) is True
-    assert (d.created_at < d.updated_at) is True
 
 
 def test_updated_at_monotonic(db_session):

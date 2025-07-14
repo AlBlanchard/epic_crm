@@ -17,6 +17,7 @@ from sqlalchemy import CheckConstraint
 from .database import Base
 from decimal import Decimal
 from functools import partial
+from .enums import UserRole
 
 utcnow = partial(datetime.datetime.now, datetime.timezone.utc)
 
@@ -60,20 +61,40 @@ class Contract(AbstractBase):
 
     @validates("amount_due", "amount_total")
     def validate_amounts(self, key, value):
-        total = self.get("amount_total")
-        due = self.get("amount_due")
-
+        # Validation du type
         if not isinstance(value, (Decimal, int, float)):
             raise ValueError(f"{key} must be a numeric type (Decimal, int, float)")
 
-        if isinstance(value, Decimal) and value < 0:
+        # Convertir en Decimal pour la précision
+        if isinstance(value, (int, float)):
+            value = Decimal(str(value))
+
+        # Validation de base : pas de valeurs négatives
+        if value < 0:
             raise ValueError(f"{key} cannot be negative")
 
-        if isinstance(total, Decimal) and total <= 0:
-            raise ValueError("amount_total cannot be negative or zero")
+        # Validation spécifique pour amount_total
+        if key == "amount_total":
+            if value <= 0:
+                raise ValueError("amount_total must be greater than zero")
 
-        if isinstance(total, Decimal) and isinstance(due, Decimal):
-            if due > total:
+            # Vérifier la cohérence avec amount_due existant
+            current_due = getattr(self, "amount_due", None)
+            if (
+                current_due is not None
+                and isinstance(current_due, Decimal)
+                and current_due > value
+            ):
+                raise ValueError("amount_due cannot exceed amount_total")
+
+        # Validation spécifique pour amount_due
+        elif key == "amount_due":
+            current_total = getattr(self, "amount_total", None)
+            if (
+                current_total is not None
+                and isinstance(current_total, Decimal)
+                and value > current_total
+            ):
                 raise ValueError("amount_due cannot exceed amount_total")
 
         return value
@@ -102,12 +123,20 @@ class Event(AbstractBase):
 
     @validates("date_start", "date_end")
     def validate_dates(self, key, value):
-
-        if not isinstance(value, datetime):
+        if not isinstance(value, datetime.datetime):
             raise ValueError(f"{key} must be a datetime object")
 
-        if key == "date_end" and value < self.date_start:
-            raise ValueError("date_end must be after date_start")
+        # Validation de la cohérence des dates
+        if key == "date_end":
+            current_start = getattr(self, "date_start", None)
+            if current_start is not None and value <= current_start:
+                raise ValueError("date_end must be after date_start")
+
+        elif key == "date_start":
+            current_end = getattr(self, "date_end", None)
+            if current_end is not None and value >= current_end:
+                raise ValueError("date_start must be before date_end")
+
         return value
 
     @validates("attendees")
@@ -115,7 +144,7 @@ class Event(AbstractBase):
         if not isinstance(value, int):
             raise ValueError(f"{key} must be an integer")
 
-        if value < 0:
+        if value <= 0:
             raise ValueError(f"{key} cannot be negative or zero")
 
         return value
@@ -124,17 +153,27 @@ class Event(AbstractBase):
 class User(AbstractBase):
     __tablename__ = "users"
 
+    # Constante de classe pour les rôles autorisés
+    ALLOWED_ROLES = {"sales", "support", "management"}
+
     username = Column(String, nullable=False, unique=True)
-    # La logique de hash est à implémenter plus tard
     password_hash = Column(String(255), nullable=False)
-    # Enum pour les rôles (sales, support, management)
-    role = Column(
-        PgEnum("sales", "support", "management", name="user_roles"), nullable=False
-    )
+    role = Column(PgEnum(*UserRole.values(), name="user_roles"), nullable=False)
 
     clients = relationship("Client", back_populates="sales_contact")
     contracts = relationship("Contract", back_populates="sales_contact")
     events = relationship("Event", back_populates="support_contact")
+
+    @validates("role")
+    def validate_role(self, key, value):
+        if not isinstance(value, str):
+            raise ValueError(f"Role must be a string, got {type(value).__name__}")
+
+        if not UserRole.has_value(value):
+            raise ValueError(
+                f"Invalid role '{value}'. Must be one of: {', '.join(UserRole.values())}"
+            )
+        return value
 
     def __repr__(self) -> str:
         return f"<User(id={self.id}, username='{self.username}', role='{self.role}')>"
@@ -162,6 +201,9 @@ class Client(AbstractBase):
     def validate_email(self, key, value):
         email_regex = r"^\S+@\S+\.\S+$"
 
+        if value is None:
+            raise ValueError("Email cannot be None")
+
         if not isinstance(value, str):
             raise ValueError(f"{key} must be a string")
 
@@ -172,7 +214,7 @@ class Client(AbstractBase):
 
     @validates("phone")
     def validate_phone(self, key, value):
-        phone_regex = r"^\\+?[1-9][0-9]{7,14}$"
+        phone_regex = r"^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$"
 
         if value and not re.match(phone_regex, value):
             raise ValueError(f"{key} must be a valid phone number")

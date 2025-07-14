@@ -9,6 +9,15 @@ from sqlalchemy.orm import sessionmaker
 from crm.database import Base
 
 
+# Configuration de la base de données pour les tests
+# "function" à la place de "session" pour réinitialiser la base de données entre chaque test
+@pytest.fixture(scope="function", autouse=True)
+def setup_database(engine_fixture):
+    Base.metadata.create_all(bind=engine_fixture)
+    yield
+    Base.metadata.drop_all(bind=engine_fixture)
+
+
 TEST_URL = "sqlite+pysqlite:///:memory:"
 engine = create_engine(TEST_URL, echo=False, future=True)
 
@@ -18,10 +27,6 @@ engine = create_engine(TEST_URL, echo=False, future=True)
 def _enable_foreign_keys(dbapi_connection, _):
     if isinstance(dbapi_connection, sqlite3.Connection):
         dbapi_connection.execute("PRAGMA foreign_keys = ON")
-
-
-# Création des tables globalement
-Base.metadata.create_all(bind=engine)
 
 
 @pytest.fixture(scope="session")
