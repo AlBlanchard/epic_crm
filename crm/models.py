@@ -23,6 +23,7 @@ from functools import partial
 from .enums import UserRole
 
 utcnow = partial(datetime.datetime.now, datetime.timezone.utc)
+
 ph = PasswordHasher(
     time_cost=3,  # nombre d'itérations
     memory_cost=65536,  # mémoire utilisée en KB (64MB ici)
