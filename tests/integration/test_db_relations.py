@@ -5,9 +5,15 @@ from crm.models import User, Client, Contract, Event
 from sqlalchemy.exc import IntegrityError
 
 
-def test_full_creation_flow(db_session):
+def test_full_creation_flow(db_session, sales_dept, support_dept):
     # Création du commercial
-    sales_user = User(username="Lucile", password_hash="hash", role="sales")
+    sales_user = User(
+        username="Lucile",
+        email="lucile@user.fr",
+        password_hash="hash",
+        department=sales_dept,
+        employee_number=1001,
+    )
     db_session.add(sales_user)
 
     # Création du client
@@ -31,7 +37,13 @@ def test_full_creation_flow(db_session):
     db_session.add(contract)
 
     # Création du support
-    support_user = User(username="Alexis", password_hash="hash", role="support")
+    support_user = User(
+        username="Alexis",
+        email="alexis@user.fr",
+        password_hash="hash",
+        department=support_dept,
+        employee_number=1002,
+    )
     db_session.add(support_user)
 
     # Création de l'événement lié au contrat et au support
@@ -60,8 +72,14 @@ def test_full_creation_flow(db_session):
     assert (event.location == "Paris") is True
 
 
-def test_contract_creation_without_client_should_fail(db_session):
-    sales_user = User(username="Lohan", password_hash="hash", role="sales")
+def test_contract_creation_without_client_should_fail(db_session, sales_dept):
+    sales_user = User(
+        username="Lohan",
+        email="lohan@user.fr",
+        password_hash="hash",
+        department=sales_dept,
+        employee_number=1003,
+    )
     db_session.add(sales_user)
     db_session.flush()
 
@@ -78,8 +96,14 @@ def test_contract_creation_without_client_should_fail(db_session):
         db_session.flush()
 
 
-def test_event_creation_without_contract_should_fail(db_session):
-    support_user = User(username="Rémi", password_hash="hash", role="support")
+def test_event_creation_without_contract_should_fail(db_session, support_dept):
+    support_user = User(
+        username="Rémi",
+        email="remi@user.fr",
+        password_hash="hash",
+        department=support_dept,
+        employee_number=1004,
+    )
     db_session.add(support_user)
     db_session.flush()
 
@@ -114,10 +138,10 @@ def test_client_creation_without_sales_contact_should_fail(db_session):
 
 
 def test_contract_with_due_exceeding_total_should_fail(
-    db_session, sample_clients, sample_users
+    db_session, sample_clients, sample_users, sales_dept
 ):
     client = sample_clients[0]
-    sales = [u for u in sample_users if u.role == "sales"][0]
+    sales = [u for u in sample_users if u.department == sales_dept][0]
 
     with pytest.raises(ValueError, match="amount_due cannot exceed amount_total"):
         contract = Contract(
@@ -132,10 +156,10 @@ def test_contract_with_due_exceeding_total_should_fail(
 
 
 def test_event_with_end_before_start_should_fail(
-    db_session, sample_contracts, sample_users
+    db_session, sample_contracts, sample_users, support_dept
 ):
     contract = sample_contracts[0]
-    support = [u for u in sample_users if u.role == "support"][0]
+    support = [u for u in sample_users if u.department == support_dept][0]
 
     with pytest.raises(ValueError, match="date_end must be after date_start"):
         event = Event(
@@ -152,10 +176,14 @@ def test_event_with_end_before_start_should_fail(
         db_session.flush()
 
 
-def test_update_client_sales_contact(db_session, sample_clients, sample_users):
+def test_update_client_sales_contact(
+    db_session, sample_clients, sample_users, sales_dept
+):
     client = sample_clients[0]
     new_sales = [
-        u for u in sample_users if u.role == "sales" and u != client.sales_contact
+        u
+        for u in sample_users
+        if u.department == sales_dept and u != client.sales_contact
     ][0]
 
     client.sales_contact = new_sales

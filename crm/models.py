@@ -1,6 +1,9 @@
 import re
 import datetime
 
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
+
 from sqlalchemy import (
     Column,
     Integer,
@@ -20,6 +23,11 @@ from functools import partial
 from .enums import UserRole
 
 utcnow = partial(datetime.datetime.now, datetime.timezone.utc)
+ph = PasswordHasher(
+    time_cost=3,  # nombre d'itérations
+    memory_cost=65536,  # mémoire utilisée en KB (64MB ici)
+    parallelism=4,  # threads
+)
 
 
 class AbstractBase(Base):
@@ -153,16 +161,30 @@ class Event(AbstractBase):
 class User(AbstractBase):
     __tablename__ = "users"
 
-    # Constante de classe pour les rôles autorisés
-    ALLOWED_ROLES = {"sales", "support", "management"}
-
+    employee_number = Column(Integer, unique=True, nullable=False)
     username = Column(String, nullable=False, unique=True)
+    email = Column(String, nullable=False, unique=True)
     password_hash = Column(String(255), nullable=False)
-    role = Column(PgEnum(*UserRole.values(), name="user_roles"), nullable=False)
+
+    department_id = Column(Integer, ForeignKey("departments.id"), nullable=False)
+    department = relationship("Department", back_populates="users")
 
     clients = relationship("Client", back_populates="sales_contact")
     contracts = relationship("Contract", back_populates="sales_contact")
     events = relationship("Event", back_populates="support_contact")
+
+    def set_password(self, raw_password: str):
+        self.password_hash = ph.hash(raw_password)
+
+    def verify_password(self, raw_password: str) -> bool:
+        try:
+            # Comme password_hash est typé comme String, on s'assure qu'il est traité comme tel
+            hash_value = (
+                str(self.password_hash) if self.password_hash is not None else ""
+            )
+            return ph.verify(hash_value, raw_password)
+        except VerifyMismatchError:
+            return False
 
     @validates("role")
     def validate_role(self, key, value):
@@ -176,7 +198,10 @@ class User(AbstractBase):
         return value
 
     def __repr__(self) -> str:
-        return f"<User(id={self.id}, username='{self.username}', role='{self.role}')>"
+        return (
+            f"<User(id={self.id}, username='{self.username}', "
+            f"employee_number={self.employee_number}, department={self.department.name})>"
+        )
 
 
 class Client(AbstractBase):
@@ -220,3 +245,15 @@ class Client(AbstractBase):
             raise ValueError(f"{key} must be a valid phone number")
 
         return value
+
+
+class Department(Base):
+    __tablename__ = "departments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(PgEnum(UserRole), nullable=False, unique=True)
+
+    users = relationship("User", back_populates="department")
+
+    def __repr__(self) -> str:
+        return f"<Department(id={self.id}, name='{self.name}')>"

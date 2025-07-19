@@ -7,21 +7,13 @@ from sqlalchemy.exc import IntegrityError
 from tests.conftest import db_session
 
 
-def add_user_sales_for_test(db_session):
-    """Ajoute un utilisateur de type 'sales' pour les tests."""
-    user = User(username="Jean Test", password_hash="hash", role="sales")
-    db_session.add(user)
-    db_session.flush()
-    return user
-
-
 def add_client_for_test(db_session, user):
     """Ajoute un client pour les tests."""
     if not isinstance(user, User):
         raise ValueError("user must be an instance of User")
 
-    if (user.role == "sales") is False:
-        raise ValueError("user must have role 'sales'")
+    if (user.department.name == "sales") is False:
+        raise ValueError("user must have department 'sales'")
 
     client = Client(
         full_name="French Connection",
@@ -35,9 +27,9 @@ def add_client_for_test(db_session, user):
     return client
 
 
-def test_create_valid_client(db_session):
+def test_create_valid_client(db_session, sample_users):
     """Vérifie la création d'un client valide."""
-    user = add_user_sales_for_test(db_session)
+    user = sample_users[0]
     db_session.flush()
 
     client = add_client_for_test(db_session, user)
@@ -49,9 +41,9 @@ def test_create_valid_client(db_session):
     assert (client.sales_contact_id == user.id) is True
 
 
-def test_client_email_cannot_be_unset(db_session):
+def test_client_email_cannot_be_unset(db_session, sample_users):
     """Vérifie qu'un email vide déclenche une erreur SQL (CheckConstraint)."""
-    user = add_user_sales_for_test(db_session)
+    user = sample_users[0]
     db_session.add(user)
     db_session.flush()
 
@@ -95,9 +87,9 @@ def test_client_missing_sales_contact(db_session):
         db_session.flush()
 
 
-def test_client_email_must_be_unique(db_session):
+def test_client_email_must_be_unique(db_session, sample_users):
     """Vérifie qu'un email dupliqué déclenche une erreur d'intégrité."""
-    user = add_user_sales_for_test(db_session)
+    user = sample_users[0]
 
     with pytest.raises(IntegrityError):
         db_session.add_all(

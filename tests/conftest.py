@@ -3,7 +3,7 @@ import datetime as dt
 import sqlite3
 from decimal import Decimal
 from crm import models  # Charge les classes sinon ne fonctionne pas
-from crm.models import User, Client, Contract, Event
+from crm.models import User, Client, Contract, Event, Department
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from crm.database import Base
@@ -46,14 +46,50 @@ def db_session(engine_fixture):
 
 
 @pytest.fixture
-def sample_users(db_session):
+def sample_users(db_session, sales_dept, support_dept, management_dept):
     users = [
-        User(username="sales1", password_hash="x", role="sales"),
-        User(username="sales2", password_hash="x", role="sales"),
-        User(username="supp1", password_hash="x", role="support"),
-        User(username="supp2", password_hash="x", role="support"),
-        User(username="manager1", password_hash="x", role="management"),
-        User(username="manager2", password_hash="x", role="management"),
+        User(
+            employee_number=1,
+            username="sales1",
+            email="sales1@test.com",
+            password_hash="hash",
+            department=sales_dept,
+        ),
+        User(
+            employee_number=2,
+            username="sales2",
+            email="sales2@test.com",
+            password_hash="hash",
+            department=sales_dept,
+        ),
+        User(
+            employee_number=3,
+            username="supp1",
+            email="supp1@test.com",
+            password_hash="hash",
+            department=support_dept,
+        ),
+        User(
+            employee_number=4,
+            username="supp2",
+            email="supp2@test.com",
+            password_hash="hash",
+            department=support_dept,
+        ),
+        User(
+            employee_number=5,
+            username="manager1",
+            email="manager1@test.com",
+            password_hash="hash",
+            department=management_dept,
+        ),
+        User(
+            employee_number=6,
+            username="manager2",
+            email="manager2@test.com",
+            password_hash="hash",
+            department=management_dept,
+        ),
     ]
     db_session.add_all(users)
     db_session.flush()  # Exécute les INSERT pour générer les IDs
@@ -122,3 +158,34 @@ def sample_events(db_session, sample_contracts, sample_users):
     db_session.add_all(events)
     db_session.flush()
     return events
+
+
+@pytest.fixture
+def departments(db_session):
+    """Fixture pour créer tous les départements"""
+    departments = [
+        Department(name="sales"),
+        Department(name="support"),
+        Department(name="management"),
+    ]
+    db_session.add_all(departments)
+    db_session.flush()
+    return departments
+
+
+@pytest.fixture
+def sales_dept(db_session, departments):
+    """Fixture pour récupérer le département des ventes"""
+    return next(dept for dept in departments if dept.name == "sales")
+
+
+@pytest.fixture
+def support_dept(db_session, departments):
+    """Fixture pour récupérer le département de support"""
+    return next(dept for dept in departments if dept.name == "support")
+
+
+@pytest.fixture
+def management_dept(db_session, departments):
+    """Fixture pour récupérer le département de management"""
+    return next(dept for dept in departments if dept.name == "management")
