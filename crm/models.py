@@ -14,7 +14,7 @@ from sqlalchemy import (
     Boolean,
     func,
 )
-from sqlalchemy.orm import relationship, validates
+from sqlalchemy.orm import relationship, validates, Session
 from sqlalchemy import CheckConstraint
 from .database import Base
 from decimal import Decimal
@@ -189,12 +189,54 @@ class User(AbstractBase):
         except VerifyMismatchError:
             return False
 
-    def __repr__(self) -> str:
-        role_names = ", ".join([role.name for role in self.roles])
-        return (
-            f"<User(id={self.id}, username='{self.username}', "
-            f"employee_number={self.employee_number}, roles=[{role_names}])>"
-        )
+    def has_role(self, role: "Role") -> bool:
+        return any(user_role.role_id == role.id for user_role in self.user_roles)
+
+    def add_role(self, role: "Role", session: "Session"):
+        if role is None or session is None:
+            raise ValueError("Le rôle et la session sont requis")
+
+        if self.has_role(role):
+            raise ValueError(
+                f"L'utilisateur {self.username} a déjà le rôle {role.name}"
+            )
+
+        try:
+            user_role = UserRole(user=self, role=role)
+            session.add(user_role)
+            session.flush()
+            print(f"Rôle {role.name} ajouté à l'utilisateur {self.username}")
+
+        except Exception as e:
+            session.rollback()
+            raise ValueError(f"Impossible d'ajouter le rôle : {str(e)}")
+
+    def remove_role(self, role: "Role", session: "Session"):
+        if role is None or session is None:
+            raise ValueError("Le rôle et la session sont requis")
+
+        user_role = next((ur for ur in self.user_roles if ur.role_id == role.id), None)
+
+        if user_role is None:
+            raise ValueError(
+                f"L'utilisateur {self.username} n'a pas le rôle {role.name}"
+            )
+
+        try:
+            session.delete(user_role)
+            session.flush()
+            print(f"Rôle {role.name} retiré de l'utilisateur {self.username}")
+
+        except Exception as e:
+            session.rollback()
+            raise ValueError(f"Impossible de retirer le rôle : {str(e)}")
+
+        def __repr__(self) -> str:
+            role_names = ", ".join([role.name for role in self.roles])
+            return (
+                f"<User(id={self.id}, username='{self.username}', "
+                f"employee_number={self.employee_number}, roles=[{role_names}])>"
+            )
 
 
 class Client(AbstractBase):
