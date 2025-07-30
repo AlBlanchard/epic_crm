@@ -7,6 +7,7 @@ from crm.models import User
 from crm.database import SessionLocal  # Ton sessionmaker
 from getpass import getpass
 from pathlib import Path
+from .data_reader import DataReader
 
 
 @click.group()
@@ -107,3 +108,51 @@ def refresh():
 
 
 cli.add_command(refresh)
+
+
+@click.command()
+def list_clients():
+    """Affiche tous les clients (si rôle sales)."""
+    with SessionLocal() as session:
+        try:
+            reader = DataReader(session)
+            clients = reader.get_all_clients()
+            for client in clients:
+                click.echo(f"{client.id} - {client.name}")
+        except Exception as e:
+            click.echo(f"Erreur : {e}")
+
+
+cli.add_command(list_clients)
+
+
+@click.command()
+def list_contracts():
+    """Affiche tous les contrats (si rôle sales)."""
+    with SessionLocal() as session:
+        try:
+            reader = DataReader(session)
+            contracts = reader.get_all_contracts()
+            for contract in contracts:
+                click.echo(f"{contract.id} - {contract.description}")
+        except Exception as e:
+            click.echo(f"Erreur : {e}")
+
+
+cli.add_command(list_contracts)
+
+
+@click.command()
+def list_events():
+    """Affiche tous les événements (si rôle support)."""
+    with SessionLocal() as session:
+        try:
+            reader = DataReader(session)
+            events = reader.get_all_events()
+            for event in events:
+                click.echo(f"{event.id} - {event.title}")
+        except Exception as e:
+            click.echo(f"Erreur : {e}")
+
+
+cli.add_command(list_events)
