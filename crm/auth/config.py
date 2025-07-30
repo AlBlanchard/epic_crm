@@ -1,9 +1,12 @@
 import os
 from datetime import timedelta
+from pathlib import Path
 
 
 def parse_duration(value: str) -> timedelta:
-    """Parse une chaîne de caractères en un objet timedelta."""
+    """Sert à convertir une chaîne de caractères représentant une durée comme "1h", "30m", "2d"
+    en un objet timedelta utilisable par Python pour représenter un intervalle de temps.
+    """
     unit = value[-1]
     number = int(value[:-1])
     if unit == "h":
@@ -24,3 +27,5 @@ JWT_ACCESS_TOKEN_EXPIRES = parse_duration(
 JWT_REFRESH_TOKEN_EXPIRES = parse_duration(
     os.getenv("JWT_REFRESH_TOKEN_EXPIRES", "refresh_expire")
 )
+
+TOKEN_PATH = Path.home() / ".epicevents_token"

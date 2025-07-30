@@ -15,12 +15,10 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.orm import relationship, validates
-from sqlalchemy import Enum as PgEnum
 from sqlalchemy import CheckConstraint
 from .database import Base
 from decimal import Decimal
 from functools import partial
-from .enums import UserRole
 
 utcnow = partial(datetime.datetime.now, datetime.timezone.utc)
 
@@ -167,12 +165,16 @@ class User(AbstractBase):
     email = Column(String, nullable=False, unique=True)
     password_hash = Column(String(255), nullable=False)
 
-    department_id = Column(Integer, ForeignKey("departments.id"), nullable=False)
-    department = relationship("Department", back_populates="users")
+    # Relation many-tomany via la table d'association user_roles
+    user_roles = relationship("UserRole", back_populates="user")
 
     clients = relationship("Client", back_populates="sales_contact")
     contracts = relationship("Contract", back_populates="sales_contact")
     events = relationship("Event", back_populates="support_contact")
+
+    @property
+    def roles(self):
+        return [user_role.role for user_role in self.user_roles]
 
     def set_password(self, raw_password: str):
         self.password_hash = ph.hash(raw_password)
@@ -187,21 +189,11 @@ class User(AbstractBase):
         except VerifyMismatchError:
             return False
 
-    @validates("role")
-    def validate_role(self, key, value):
-        if not isinstance(value, str):
-            raise ValueError(f"Role must be a string, got {type(value).__name__}")
-
-        if not UserRole.has_value(value):
-            raise ValueError(
-                f"Invalid role '{value}'. Must be one of: {', '.join(UserRole.values())}"
-            )
-        return value
-
     def __repr__(self) -> str:
+        role_names = ", ".join([role.name for role in self.roles])
         return (
             f"<User(id={self.id}, username='{self.username}', "
-            f"employee_number={self.employee_number}, department={self.department.name})>"
+            f"employee_number={self.employee_number}, roles=[{role_names}])>"
         )
 
 
@@ -248,13 +240,32 @@ class Client(AbstractBase):
         return value
 
 
-class Department(Base):
-    __tablename__ = "departments"
+class Role(Base):
+    __tablename__ = "roles"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(PgEnum(UserRole), nullable=False, unique=True)
+    name = Column(String, nullable=False, unique=True)
 
-    users = relationship("User", back_populates="department")
+    user_roles = relationship("UserRole", back_populates="role")
+
+    @property
+    def users(self):
+        return [user_role.user for user_role in self.user_roles]
 
     def __repr__(self) -> str:
-        return f"<Department(id={self.id}, name='{self.name}')>"
+        return f"<Role(id={self.id}, name='{self.name}')>"
+
+
+class UserRole(Base):
+    """Table d'association pour la relation many-to-many entre User et Role."""
+
+    __tablename__ = "user_roles"
+
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    role_id = Column(Integer, ForeignKey("roles.id"), primary_key=True)
+
+    user = relationship("User", back_populates="user_roles")
+    role = relationship("Role", back_populates="user_roles")
+
+    def __repr__(self) -> str:
+        return f"<UserRole(user_id={self.user_id}, role_id={self.role_id})>"
