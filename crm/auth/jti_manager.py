@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 from typing import Optional, Set
+from .auth import Authentication
 
 
 class JTIManager:
@@ -38,6 +39,12 @@ class JTIManager:
         jtis = self._load_jtis()
         jtis.discard(jti)
         self._save_jtis(jtis)
+
+    def revoke_refresh_jti(self, jti: str):
+        """
+        Révoque un token de rafraîchissement en supprimant son jti.
+        """
+        self.revoke(jti)
 
     def is_valid(self, jti: str) -> bool:
         return jti in self._load_jtis()

@@ -8,6 +8,7 @@ from crm.database import SessionLocal  # Ton sessionmaker
 from getpass import getpass
 from pathlib import Path
 from .data_reader import DataReader
+from .auth.config import TOKEN_PATH
 
 
 @click.group()
@@ -40,12 +41,14 @@ def login():
         REFRESH_TOKEN_PATH.write_text(refresh_token)
 
         # Stockage des jti dans le JTIManager
-        access_payload = Authentication.verify_token(access_token)
-        refresh_payload = Authentication.verify_token(refresh_token)
+        access_payload = Authentication.verify_token_without_jti(access_token)
+        refresh_payload = Authentication.verify_token_without_jti(refresh_token)
 
         jti_store = JTIManager()
         jti_store.add(access_payload["jti"])
         jti_store.add(refresh_payload["jti"])
+
+        TOKEN_PATH.write_text(access_token)
 
         click.echo(
             "Authentification réussie. Les tokens ont été générés et enregistrés."
@@ -55,33 +58,38 @@ def login():
 @click.command()
 def logout():
     """
-    Déconnecte l'utilisateur : révoque le token et le supprime localement.
+    Déconnecte l'utilisateur : révoque les tokens d'accès et de rafraîchissement, et les supprime localement.
     """
-    token = Authentication.load_token()
-    if not token:
-        click.echo("Aucun token trouvé. Vous êtes peut-être déjà déconnecté.")
-        return
+    jti_store = JTIManager()
 
-    try:
-        payload = Authentication.verify_token(token)
-        jti = payload.get("jti")
+    # Révoque le token d'accès
+    if ACCESS_TOKEN_PATH.exists():
+        try:
+            token = ACCESS_TOKEN_PATH.read_text()
+            payload = Authentication.verify_token(token)
+            jti = payload.get("jti")
+            if jti:
+                jti_store.revoke(jti)
+                click.echo("Token d'accès révoqué.")
+        except Exception as e:
+            click.echo(f"Erreur sur le token d'accès : {e}")
 
-        if jti:
-            jti_store = JTIManager()
-            jti_store.revoke(jti)
-            click.echo("Le token a été révoqué.")
-        else:
-            click.echo("Token sans identifiant unique (jti). Révocation impossible.")
+    # Révoque le token de rafraîchissement
+    if REFRESH_TOKEN_PATH.exists():
+        try:
+            refresh_token = REFRESH_TOKEN_PATH.read_text()
+            payload = Authentication.verify_token(refresh_token)
+            jti = payload.get("jti")
+            if jti:
+                jti_store.revoke(jti)
+                click.echo("Token de rafraîchissement révoqué.")
+        except Exception as e:
+            click.echo(f"Erreur sur le token de rafraîchissement : {e}")
 
-        # Supprimer le fichier local
-        ACCESS_TOKEN_PATH.unlink(missing_ok=True)
-        REFRESH_TOKEN_PATH.unlink(missing_ok=True)
-        click.echo("Déconnexion réussie.")
-
-    except ValueError as e:
-        click.echo(f"Erreur : {e}")
-        ACCESS_TOKEN_PATH.unlink(missing_ok=True)
-        click.echo("Fichier token supprimé malgré l'erreur.")
+    # Supprime les fichiers
+    ACCESS_TOKEN_PATH.unlink(missing_ok=True)
+    REFRESH_TOKEN_PATH.unlink(missing_ok=True)
+    click.echo("Déconnexion réussie.")
 
 
 cli.add_command(logout)
@@ -156,3 +164,34 @@ def list_events():
 
 
 cli.add_command(list_events)
+
+
+@click.command()
+def hashpassword():
+    """Génère un hash pour un mot de passe."""
+    password = getpass("Entrez le mot de passe à hasher : ")
+    user = User()
+    hashed_password = user.set_password(password)
+    click.echo(f"Hash du mot de passe : {hashed_password}")
+
+
+cli.add_command(hashpassword)
+
+
+@click.command()
+def createtestuser():
+    """Crée un utilisateur de test avec un mot de passe prédéfini."""
+    username = click.prompt("Nom d'utilisateur pour le test")
+    password = getpass("Mot de passe pour le test : ")
+    email = click.prompt("Email pour le test : ")
+    employee_number = click.prompt("Numéro d'employé pour le test : ")
+
+    with SessionLocal() as session:
+        user = User(username=username, email=email, employee_number=employee_number)
+        user.set_password(password)
+        session.add(user)
+        session.commit()
+        click.echo(f"Utilisateur de test créé : {user.username}")
+
+
+cli.add_command(createtestuser)

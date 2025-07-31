@@ -1,6 +1,6 @@
 from typing import Optional, Type
 from .auth.auth import Authentication
-from auth.jti_manager import JTIManager
+from .auth.jti_manager import JTIManager
 from .auth.permission import Permission
 from crm.models import User, Client, Contract, Event
 from sqlalchemy.orm import Session

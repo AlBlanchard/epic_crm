@@ -178,6 +178,7 @@ class User(AbstractBase):
 
     def set_password(self, raw_password: str):
         self.password_hash = ph.hash(raw_password)
+        return self.password_hash
 
     def verify_password(self, raw_password: str) -> bool:
         try:
