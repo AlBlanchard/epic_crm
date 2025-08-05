@@ -12,9 +12,9 @@ from sqlalchemy import (
     ForeignKey,
     Numeric,
     Boolean,
-    func,
+    Integer,
 )
-from sqlalchemy.orm import relationship, validates, Session
+from sqlalchemy.orm import relationship, validates, Session, Mapped, mapped_column
 from sqlalchemy import CheckConstraint
 from .database import Base
 from decimal import Decimal
@@ -32,13 +32,13 @@ ph = PasswordHasher(
 class AbstractBase(Base):
     __abstract__ = True
 
-    id = Column(Integer, primary_key=True, index=True)
-    created_at = Column(
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True),
         default=utcnow,
         nullable=False,
     )
-    updated_at = Column(
+    updated_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True),
         default=utcnow,
         onupdate=utcnow,
@@ -52,12 +52,16 @@ class Contract(AbstractBase):
         CheckConstraint("amount_due <= amount_total", name="check_amount_due"),
     )
 
-    client_id = Column(Integer, ForeignKey("clients.id"), nullable=False)
-    sales_contact_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    client_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("clients.id"), nullable=False
+    )
+    sales_contact_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=False
+    )
 
-    amount_total = Column(Numeric(10, 2), nullable=False)
-    amount_due = Column(Numeric(10, 2), nullable=False)
-    is_signed = Column(Boolean, default=False, nullable=False)
+    amount_total: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    amount_due: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    is_signed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     client = relationship("Client", back_populates="contracts")
     sales_contact = relationship("User", back_populates="contracts")
@@ -113,14 +117,18 @@ class Event(AbstractBase):
         CheckConstraint("date_end > date_start", name="check_event_dates"),
     )
 
-    contract_id = Column(Integer, ForeignKey("contracts.id"), nullable=False)
-    support_contact_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    contract_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("contracts.id"), nullable=False
+    )
+    support_contact_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=True
+    )
 
-    date_start = Column(DateTime, nullable=False)
-    date_end = Column(DateTime, nullable=False)
-    location = Column(String(255))
-    attendees = Column(Integer)
-    notes = Column(String(1024))
+    date_start: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False)
+    date_end: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False)
+    location: Mapped[str] = mapped_column(String(255))
+    attendees: Mapped[int] = mapped_column(Integer)
+    notes: Mapped[str] = mapped_column(String(1024))
 
     contract = relationship("Contract", back_populates="event")
     support_contact = relationship("User", back_populates="events")
@@ -160,10 +168,10 @@ class Event(AbstractBase):
 class User(AbstractBase):
     __tablename__ = "users"
 
-    employee_number = Column(Integer, unique=True, nullable=False)
-    username = Column(String, nullable=False, unique=True)
-    email = Column(String, nullable=False, unique=True)
-    password_hash = Column(String(255), nullable=False)
+    employee_number: Mapped[int] = mapped_column(Integer, unique=True, nullable=False)
+    username: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    email: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
 
     # Relation many-tomany via la table d'association user_roles
     user_roles = relationship("UserRole", back_populates="user")
@@ -244,13 +252,15 @@ class Client(AbstractBase):
     __tablename__ = "clients"
     __table_args__ = (CheckConstraint("email != ''", name="check_client_email"),)
 
-    full_name = Column(String, nullable=False)
-    email = Column(String, nullable=False, unique=True)
-    phone = Column(String)
-    company_name = Column(String)
+    full_name: Mapped[str] = mapped_column(String, nullable=False)
+    email: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    phone: Mapped[str] = mapped_column(String)
+    company_name: Mapped[str] = mapped_column(String)
 
     # Many Client to One User
-    sales_contact_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    sales_contact_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=False
+    )
 
     sales_contact = relationship("User", back_populates="clients")
     contracts = relationship("Contract", back_populates="client")
@@ -286,8 +296,8 @@ class Client(AbstractBase):
 class Role(Base):
     __tablename__ = "roles"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False, unique=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String, nullable=False, unique=True)
 
     user_roles = relationship("UserRole", back_populates="role")
 
@@ -304,8 +314,12 @@ class UserRole(Base):
 
     __tablename__ = "user_roles"
 
-    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
-    role_id = Column(Integer, ForeignKey("roles.id"), primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id"), primary_key=True
+    )
+    role_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("roles.id"), primary_key=True
+    )
 
     user = relationship("User", back_populates="user_roles")
     role = relationship("Role", back_populates="user_roles")

@@ -1,26 +1,24 @@
 import click
-import json
-
-from .auth.auth import Authentication
-from .auth.jti_manager import JTIManager
+from ..auth.auth import Authentication
+from ..auth.jti_manager import JTIManager
 from crm.models import User
-from crm.database import SessionLocal  # Ton sessionmaker
+from crm.database import SessionLocal
 from getpass import getpass
 from pathlib import Path
-from .data_reader import DataReader
-from .auth.config import TOKEN_PATH
-
-
-@click.group()
-def cli():
-    pass
-
+from ..data_reader import DataReader
+from ..auth.config import TOKEN_PATH
 
 ACCESS_TOKEN_PATH = Path("access_token.jwt")
 REFRESH_TOKEN_PATH = Path("refresh_token.jwt")
 
 
-@cli.command()
+@click.group(name="auth-cli")
+def auth_cli():
+    """Commandes d'authentification."""
+    pass
+
+
+@auth_cli.command("login")
 def login():
     """Authentifie un utilisateur et génère un token JWT."""
     username = click.prompt("Nom d'utilisateur")
@@ -55,7 +53,7 @@ def login():
         )
 
 
-@click.command()
+@auth_cli.command("logout")
 def logout():
     """
     Déconnecte l'utilisateur : révoque les tokens d'accès et de rafraîchissement, et les supprime localement.
@@ -92,10 +90,7 @@ def logout():
     click.echo("Déconnexion réussie.")
 
 
-cli.add_command(logout)
-
-
-@click.command()
+@auth_cli.command("refresh")
 def refresh():
     """
     Rafraîchit le token d'accès à partir du refresh_token stocké.
@@ -113,85 +108,3 @@ def refresh():
         click.echo("Nouveau token d'accès généré et sauvegardé avec succès.")
     except ValueError as e:
         click.echo(f"Erreur lors du rafraîchissement : {e}")
-
-
-cli.add_command(refresh)
-
-
-@click.command()
-def list_clients():
-    """Affiche tous les clients (si rôle sales)."""
-    with SessionLocal() as session:
-        try:
-            reader = DataReader(session)
-            clients = reader.get_all_clients()
-            for client in clients:
-                click.echo(f"{client.id} - {client.name}")
-        except Exception as e:
-            click.echo(f"Erreur : {e}")
-
-
-cli.add_command(list_clients)
-
-
-@click.command()
-def list_contracts():
-    """Affiche tous les contrats (si rôle sales)."""
-    with SessionLocal() as session:
-        try:
-            reader = DataReader(session)
-            contracts = reader.get_all_contracts()
-            for contract in contracts:
-                click.echo(f"{contract.id} - {contract.description}")
-        except Exception as e:
-            click.echo(f"Erreur : {e}")
-
-
-cli.add_command(list_contracts)
-
-
-@click.command()
-def list_events():
-    """Affiche tous les événements (si rôle support)."""
-    with SessionLocal() as session:
-        try:
-            reader = DataReader(session)
-            events = reader.get_all_events()
-            for event in events:
-                click.echo(f"{event.id} - {event.title}")
-        except Exception as e:
-            click.echo(f"Erreur : {e}")
-
-
-cli.add_command(list_events)
-
-
-@click.command()
-def hashpassword():
-    """Génère un hash pour un mot de passe."""
-    password = getpass("Entrez le mot de passe à hasher : ")
-    user = User()
-    hashed_password = user.set_password(password)
-    click.echo(f"Hash du mot de passe : {hashed_password}")
-
-
-cli.add_command(hashpassword)
-
-
-@click.command()
-def createtestuser():
-    """Crée un utilisateur de test avec un mot de passe prédéfini."""
-    username = click.prompt("Nom d'utilisateur pour le test")
-    password = getpass("Mot de passe pour le test : ")
-    email = click.prompt("Email pour le test : ")
-    employee_number = click.prompt("Numéro d'employé pour le test : ")
-
-    with SessionLocal() as session:
-        user = User(username=username, email=email, employee_number=employee_number)
-        user.set_password(password)
-        session.add(user)
-        session.commit()
-        click.echo(f"Utilisateur de test créé : {user.username}")
-
-
-cli.add_command(createtestuser)

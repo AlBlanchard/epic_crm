@@ -1,7 +1,6 @@
 import json
 from pathlib import Path
 from typing import Optional, Set
-from .auth import Authentication
 
 
 class JTIManager:
