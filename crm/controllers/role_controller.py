@@ -23,7 +23,6 @@ class RoleController(AbstractController):
         token = Authentication.load_token()
         if not token:
             raise PermissionError("Non authentifié.")
-        print(f"Token chargé rôle: {token}")
         payload = Authentication.verify_token(token)
         me = self.users.get_by_id(int(payload["sub"]))
         if not me:

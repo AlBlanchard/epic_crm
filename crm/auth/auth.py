@@ -30,27 +30,18 @@ class Authentication:
     @staticmethod
     def authenticate_user(username: str, password: str, db: Session) -> dict[str, str]:
         user = db.query(User).filter_by(username=username).first()
-
         if not user:
-            raise ValueError("Invalid credentials")
+            raise ValueError("Nom d'utilisateur ou mot de passe incorrect")
 
-        try:
-            Authentication.verify_password(password, str(user.password_hash))
-        except Exception:
-            raise ValueError("Invalid credentials")
+        if not Authentication.verify_password(password, str(user.password_hash)):
+            raise ValueError("Nom d'utilisateur ou mot de passe incorrect")
 
         user_id = user.id
+        access_token = Authentication.generate_access_token(user_id)  # type: ignore
+        refresh_token = Authentication.generate_refresh_token(user_id)  # type: ignore
 
-        # L'IDE détecte une erreur pour le user_id car j'utilise l'ancien typage SQLAlchemy
-        # mais c'est correct car user_id est un entier
-        return {
-            "access_token": Authentication.generate_access_token(
-                user_id  # type: ignore
-            ),
-            "refresh_token": Authentication.generate_refresh_token(
-                user_id  # type: ignore
-            ),
-        }
+        Authentication.register_tokens_jti(access_token, refresh_token)
+        return {"access_token": access_token, "refresh_token": refresh_token}
 
     @staticmethod
     def generate_access_token(user_id: int) -> str:
@@ -82,27 +73,23 @@ class Authentication:
         return token
 
     @staticmethod
-    def refresh_access_token(refresh_token: str) -> str:
-        """
-        Rafraîchit le token d'accès en utilisant un token de rafraîchissement valide.
-        """
+    def refresh_access_token(refresh_token: str) -> dict[str, str]:
+        # 1) Vérifier le refresh token
         payload = Authentication.verify_token(refresh_token)
         if payload.get("type") != "refresh_token":
             raise ValueError("Le token fourni n'est pas un token de rafraîchissement.")
 
-        user_id = payload["sub"]
-
-        # Révoque l'ancien refresh token
-        jti_store = JTIManager()
+        # 2) Révoquer l'ancien refresh JTI (anti-réutilisation)
         old_jti = payload.get("jti")
         if old_jti:
-            jti_store.revoke(old_jti)
+            jti_store.revoke(old_jti)  # utilise le jti_store module-level
 
-        # Génère les nouveaux tokens
+        # 3) Générer les nouveaux tokens (rotation du refresh)
+        user_id = int(payload["sub"])
         new_access_token = Authentication.generate_access_token(user_id)
         new_refresh_token = Authentication.generate_refresh_token(user_id)
 
-        # Enregistre les nouveaux jti
+        # 4) Enregistrer les nouveaux JTI dans la whitelist
         new_access_payload = jwt.decode(
             new_access_token, JWT_SECRET, algorithms=[JWT_ALGORITHM]
         )
@@ -110,12 +97,19 @@ class Authentication:
             new_refresh_token, JWT_SECRET, algorithms=[JWT_ALGORITHM]
         )
 
-        jti_store.add(new_access_payload["jti"])
-        jti_store.add(new_refresh_payload["jti"])
+        if j := new_access_payload.get("jti"):
+            jti_store.add(j)
+        if j := new_refresh_payload.get("jti"):
+            jti_store.add(j)
 
-        Authentication.save_token(new_access_token)
+        # 5) Sauvegarder les deux tokens localement (JSON)
+        Authentication.save_tokens(new_access_token, new_refresh_token)
 
-        return new_access_token
+        # 6) Retourner le couple
+        return {
+            "access_token": new_access_token,
+            "refresh_token": new_refresh_token,
+        }
 
     @staticmethod
     def verify_token(token: str) -> dict:
@@ -155,6 +149,7 @@ class Authentication:
         """Vérifie si le mot de passe brut correspond au mot de passe haché."""
         try:
             hash_value = str(hashed_password) if hashed_password is not None else ""
+            print(Authentication.ph.verify(hash_value, raw_password))
             return Authentication.ph.verify(hash_value, raw_password)
         except Exception:
             return False
