@@ -1,7 +1,7 @@
 import datetime as dt
 from decimal import Decimal
 import pytest
-from crm.models import User, Client, Contract, Event
+from crm.models.models import User, Client, Contract, Event
 from sqlalchemy.exc import IntegrityError
 
 

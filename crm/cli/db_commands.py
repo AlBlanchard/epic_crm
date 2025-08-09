@@ -2,7 +2,8 @@ import click
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import inspect
 from crm.database import Base, engine, SessionLocal
-from crm.models import Role, User
+from ..models.role import Role
+from ..models.user import User
 
 
 @click.group(name="db-cli")
@@ -99,5 +100,4 @@ def reset_db():
     click.echo("Suppression de la base de données...")
     Base.metadata.drop_all(bind=engine)
 
-    # Appelle la fonction, pas la commande
     _create_initial_data()

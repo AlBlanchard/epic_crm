@@ -1,5 +1,5 @@
 import pytest
-from crm.models import Event, Contract
+from crm.models.models import Event, Contract
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timedelta
 

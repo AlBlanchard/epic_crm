@@ -1,7 +1,7 @@
 import datetime as dt
 import pytest
 
-from crm.models import User
+from crm.models.models import User
 from sqlalchemy.exc import IntegrityError
 
 from tests.conftest import db_session

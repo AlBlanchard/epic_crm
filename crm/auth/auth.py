@@ -1,10 +1,11 @@
+import json
 import jwt
 from datetime import datetime, timezone
-from crm.models import User
+from ..models.user import User
 from sqlalchemy.orm import Session
 from argon2 import PasswordHasher
 from jwt import decode, ExpiredSignatureError, InvalidTokenError
-from typing import Optional
+from typing import Optional, Tuple
 from .config import (
     JWT_SECRET,
     JWT_ALGORITHM,
@@ -130,6 +131,7 @@ class Authentication:
         except ExpiredSignatureError:
             raise ValueError("Token has expired")
         except InvalidTokenError:
+            print(token)
             raise ValueError("Invalid token")
         except Exception as e:
             raise ValueError(f"Token verification failed: {str(e)}")
@@ -143,6 +145,7 @@ class Authentication:
         except ExpiredSignatureError:
             raise ValueError("Token has expired")
         except InvalidTokenError:
+            print(token)
             raise ValueError("Invalid token")
         except Exception as e:
             raise ValueError(f"Token verification failed: {str(e)}")
@@ -157,26 +160,61 @@ class Authentication:
             return False
 
     @staticmethod
-    def save_token(token: str):
-        """Enregistre le token dans un fichier local."""
-        TOKEN_PATH.write_text(token)
+    def save_tokens(access_token: str, refresh_token: str) -> None:
+        """Sauvegarde access+refresh dans un seul fichier JSON."""
+        data = {"access_token": access_token, "refresh_token": refresh_token}
+        TOKEN_PATH.write_text(json.dumps(data), encoding="utf-8")
+
+    @staticmethod
+    def load_tokens() -> Optional[Tuple[Optional[str], Optional[str]]]:
+        """Charge access+refresh depuis le fichier (si JSON), sinon (legacy) retourne (token_brut, None)."""
+        if not TOKEN_PATH.exists():
+            return None
+        raw = TOKEN_PATH.read_text(encoding="utf-8", errors="ignore").strip()
+        if not raw:
+            return None
+        if raw.startswith("{"):
+            try:
+                obj = json.loads(raw)
+                return obj.get("access_token"), obj.get("refresh_token")
+            except json.JSONDecodeError:
+                return None
+        # legacy: fichier contient juste l'access token
+        return raw, None
+
+    # rétrocompatibilité (appelée un peu partout)
+    @staticmethod
+    def save_token(token: str) -> None:
+        """DEPRECATED: sauvegarde uniquement l'access token en clair (legacy)."""
+        TOKEN_PATH.write_text(token, encoding="utf-8")
 
     @staticmethod
     def load_token() -> Optional[str]:
-        """Charge le token depuis le fichier local."""
-        if TOKEN_PATH.exists():
-            return TOKEN_PATH.read_text()
-        return None
+        """
+        Rétrocompat: si le fichier contient du JSON, on renvoie l'access_token.
+        Sinon on renvoie le contenu brut (legacy).
+        """
+        tokens = Authentication.load_tokens()
+        if tokens is None:
+            return None
+        access, _ = tokens
+        return access
 
     @staticmethod
-    def is_token_expired(token: str) -> bool:
+    def register_tokens_jti(
+        access_token: str, refresh_token: Optional[str] = None
+    ) -> None:
+        store = JTIManager()
         try:
-            payload = decode(
-                token,
-                JWT_SECRET,
-                algorithms=[JWT_ALGORITHM],
-                options={"verify_exp": True},
-            )
-            return False
-        except ExpiredSignatureError:
-            return True
+            p = Authentication.verify_token_without_jti(access_token)
+            if j := p.get("jti"):
+                store.add(j)
+        except Exception:
+            pass
+        if refresh_token:
+            try:
+                p = Authentication.verify_token_without_jti(refresh_token)
+                if j := p.get("jti"):
+                    store.add(j)
+            except Exception:
+                pass

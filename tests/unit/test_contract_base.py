@@ -1,5 +1,5 @@
 import pytest
-from crm.models import Contract, Client, User
+from crm.models.models import Contract, Client, User
 from sqlalchemy.exc import IntegrityError
 from decimal import Decimal
 

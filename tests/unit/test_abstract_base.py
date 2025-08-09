@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy import Column, String
 from sqlalchemy.exc import IntegrityError
 from crm.database import Base
-from crm.models import AbstractBase
+from crm.models.models import AbstractBase
 
 
 # Création d'une classe de test pour AbstractBase

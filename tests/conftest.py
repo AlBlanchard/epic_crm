@@ -2,9 +2,8 @@ import pytest
 import datetime as dt
 import sqlite3
 from decimal import Decimal
-from crm import models  # Charge les classes sinon ne fonctionne pas
-from crm.models import User, Client, Contract, Event, Department
-from sqlalchemy import create_engine, event
+from crm.models import models  # Charge les classes sinon ne fonctionne pas
+from crm.models.models import User, Client, Contract, Event
 from sqlalchemy.orm import sessionmaker
 from crm.database import Base
 

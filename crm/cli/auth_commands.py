@@ -1,12 +1,27 @@
 import click
 from ..auth.auth import Authentication
 from ..auth.jti_manager import JTIManager
-from crm.models import User
 from crm.database import SessionLocal
 from getpass import getpass
 from pathlib import Path
-from ..data_reader import DataReader
 from ..auth.config import TOKEN_PATH
+
+import json
+import sys
+from getpass import getpass
+from datetime import datetime
+
+import click
+
+from ..database import SessionLocal
+
+# Controllers
+from ..controllers.auth_controller import AuthController
+from ..controllers.user_controller import UserController
+from ..controllers.role_controller import RoleController
+from ..controllers.client_controller import ClientController
+from ..controllers.contract_controller import ContractController
+from ..controllers.event_controller import EventController
 
 ACCESS_TOKEN_PATH = Path("access_token.jwt")
 REFRESH_TOKEN_PATH = Path("refresh_token.jwt")
@@ -27,44 +42,33 @@ def login():
     with SessionLocal() as session:
         try:
             tokens = Authentication.authenticate_user(username, password, session)
-        except ValueError:
-            click.echo("Nom d'utilisateur ou mot de passe incorrect.")
+            access = tokens["access_token"]
+            refresh = tokens["refresh_token"]
+
+        except ValueError as e:
+            click.echo(f"Erreur : {str(e)}")
             raise SystemExit(1)
 
-        access_token = tokens["access_token"]
-        refresh_token = tokens["refresh_token"]
-
-        # Enregistrement des tokens dans des fichiers séparés
-        ACCESS_TOKEN_PATH.write_text(access_token)
-        REFRESH_TOKEN_PATH.write_text(refresh_token)
-
-        # Stockage des jti dans le JTIManager
-        access_payload = Authentication.verify_token_without_jti(access_token)
-        refresh_payload = Authentication.verify_token_without_jti(refresh_token)
-
-        jti_store = JTIManager()
-        jti_store.add(access_payload["jti"])
-        jti_store.add(refresh_payload["jti"])
-
-        TOKEN_PATH.write_text(access_token)
-
-        click.echo(
-            "Authentification réussie. Les tokens ont été générés et enregistrés."
-        )
+        # Enregistre le token d'accès dans un fichier
+        Authentication.register_tokens_jti(access, refresh)
+        Authentication.save_tokens(access, refresh)
+        click.echo("Authentification réussie.")
 
 
 @auth_cli.command("logout")
 def logout():
-    """
-    Déconnecte l'utilisateur : révoque les tokens d'accès et de rafraîchissement, et les supprime localement.
-    """
     jti_store = JTIManager()
+    pair = Authentication.load_tokens()
+    if not pair:
+        click.echo("Aucun token trouvé. Vous êtes peut-être déjà déconnecté.")
+        return
 
-    # Révoque le token d'accès
-    if ACCESS_TOKEN_PATH.exists():
+    access, refresh = pair
+
+    # Révoque access
+    if access:
         try:
-            token = ACCESS_TOKEN_PATH.read_text()
-            payload = Authentication.verify_token(token)
+            payload = Authentication.verify_token_without_jti(access)
             jti = payload.get("jti")
             if jti:
                 jti_store.revoke(jti)
@@ -72,11 +76,10 @@ def logout():
         except Exception as e:
             click.echo(f"Erreur sur le token d'accès : {e}")
 
-    # Révoque le token de rafraîchissement
-    if REFRESH_TOKEN_PATH.exists():
+    # Révoque refresh
+    if refresh:
         try:
-            refresh_token = REFRESH_TOKEN_PATH.read_text()
-            payload = Authentication.verify_token(refresh_token)
+            payload = Authentication.verify_token_without_jti(refresh)
             jti = payload.get("jti")
             if jti:
                 jti_store.revoke(jti)
@@ -84,9 +87,7 @@ def logout():
         except Exception as e:
             click.echo(f"Erreur sur le token de rafraîchissement : {e}")
 
-    # Supprime les fichiers
-    ACCESS_TOKEN_PATH.unlink(missing_ok=True)
-    REFRESH_TOKEN_PATH.unlink(missing_ok=True)
+    TOKEN_PATH.unlink(missing_ok=True)
     click.echo("Déconnexion réussie.")
 
 
