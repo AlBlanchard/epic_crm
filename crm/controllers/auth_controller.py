@@ -1,4 +1,3 @@
-# crm/controllers/auth_controller.py
 from typing import Dict, Any, Optional
 from .base import AbstractController
 from ..auth.auth import Authentication
@@ -13,9 +12,8 @@ class AuthController(AbstractController):
     def _setup_services(self) -> None:
         self.users = UserCRUD(self.session)
         self.serializer = UserSerializer()
-        self.jti_store = JTIManager()  # stocke/valide les JTI
+        self.jti_store = JTIManager()
 
-    # ----------- LOGIN -----------
     def login(self, username: str, password: str) -> Dict[str, Any]:
         """
         1) Auth via Authentication.authenticate_user
@@ -51,7 +49,6 @@ class AuthController(AbstractController):
             "me": self.serializer.serialize(user),
         }
 
-    # ----------- ME -----------
     def me(self) -> Dict[str, Any]:
         """
         Récupère le profil lié à l'access token stocké localement.
@@ -67,7 +64,6 @@ class AuthController(AbstractController):
             raise ValueError("Utilisateur introuvable.")
         return self.serializer.serialize(user)
 
-    # ----------- REFRESH -----------
     def refresh(self, refresh_token: str) -> Dict[str, Any]:
         """
         Délègue à Authentication.refresh_access_token (qui :
@@ -81,7 +77,6 @@ class AuthController(AbstractController):
         new_access = Authentication.refresh_access_token(refresh_token)
         return {"message": "Access token rafraîchi.", "access_token": new_access}
 
-    # ----------- LOGOUT -----------
     def logout(self, refresh_token: Optional[str] = None) -> Dict[str, Any]:
         """
         Révoque l'access token courant (lu depuis TOKEN_PATH) et,
@@ -95,12 +90,11 @@ class AuthController(AbstractController):
                 if jti := payload.get("jti"):
                     self.jti_store.revoke(jti)
             finally:
-                # On supprime le fichier même si le token est expiré/invalide
+                # Supprime le fichier même si le token est expiré/invalide
                 from ..auth.config import TOKEN_PATH
 
                 TOKEN_PATH.unlink(missing_ok=True)
 
-        # Refresh token (optionnel)
         if refresh_token:
             try:
                 payload = Authentication.verify_token_without_jti(refresh_token)

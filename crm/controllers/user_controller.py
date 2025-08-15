@@ -15,7 +15,6 @@ class UserController(AbstractController):
     def _setup_services(self) -> None:
         self.users = UserCRUD(self.session)
         self.roles = RoleCRUD(self.session)
-        # sérialiseur par défaut : champs publics + rôles
         self.serializer = UserSerializer()
 
     # ---------- Helpers ----------
@@ -49,7 +48,6 @@ class UserController(AbstractController):
         me = self._get_current_user()
         self._ensure_admin(me)
         rows = self.users.get_all(filters=filters, order_by=order_by)
-        # sérialiseur custom si besoin de restreindre les champs/roles
         ser = (
             self.serializer
             if (fields is None and include_roles)

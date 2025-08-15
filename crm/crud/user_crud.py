@@ -26,7 +26,6 @@ class UserCRUD(AbstractBaseCRUD):
         payload = {k: v for k, v in user_data.items() if k in ALLOWED_CREATE_FIELDS}
         user = User(**payload)
 
-        # Optionnel: gérer le password ici si fourni
         pwd = user_data.get("password")
         if pwd:
             user.set_password(pwd)
@@ -98,7 +97,7 @@ class UserCRUD(AbstractBaseCRUD):
         if not user:
             return None
 
-        # sécurité: n’autoriser que certains champs
+        # sécurité: n'autoriser que certains champs
         payload = {k: v for k, v in user_data.items() if k in ALLOWED_UPDATE_FIELDS}
 
         # password optionnel (hash via le modèle)

@@ -1,4 +1,3 @@
-# crm/controllers/base.py
 from abc import ABC, abstractmethod
 from typing import Optional
 from sqlalchemy.orm import Session
@@ -10,7 +9,7 @@ class AbstractController(ABC):
     """
     Contrôleur de base très léger :
     - gère la session (injection, context manager),
-    - point d’extension pour connecter les services/CRUD.
+    - point d'extension pour connecter les services/CRUD.
     """
 
     def __init__(self, session: Optional[Session] = None):
@@ -29,11 +28,3 @@ class AbstractController(ABC):
     def __exit__(self, exc_type, exc, tb):
         if self._owns_session and self.session:
             self.session.close()
-
-    # Optionnel : mapper proprement des erreurs DB en exceptions métier
-    def _db_guard(self, fn, *args, **kwargs):
-        try:
-            return fn(*args, **kwargs)
-        except IntegrityError as e:
-            # à toi de lever/mapper une exception métier
-            raise ValueError("Conflit d'unicité ou intégrité") from e
