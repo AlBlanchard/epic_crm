@@ -13,6 +13,7 @@ from ..controllers.event_controller import EventController
 from ..controllers.user_controller import UserController
 from ..controllers.role_controller import RoleController
 from ..utils.app_state import AppState
+from .user_view import create_user_cmd, list_users_cmd, update_user_cmd
 
 
 class MenuView(BaseView):
@@ -67,7 +68,7 @@ class MenuView(BaseView):
                 elif choice == 3:
                     self._menu_events()
                 elif choice == 4:
-                    self._menu_users()
+                    self._menu_users(ctx)
                 elif choice == 5:
                     ctx.invoke(self.auth_view.logout_cmd)
                     break
@@ -175,7 +176,7 @@ class MenuView(BaseView):
             except Exception as e:
                 self.app_state.set_error_message(str(e))
 
-    def _menu_users(self) -> None:
+    def _menu_users(self, ctx: click.Context) -> None:
         while True:
             self._clear_screen()
             self.console.print("\n[bold cyan]— Utilisateurs —[/bold cyan]")
@@ -193,11 +194,11 @@ class MenuView(BaseView):
                 if choice == 0:
                     self.handle_quit()
                 elif choice == 1:
-                    self.users_view.create_user()
+                    ctx.invoke(create_user_cmd)
                 elif choice == 2:
-                    self.users_view.list_users()
+                    ctx.invoke(list_users_cmd)
                 elif choice == 3:
-                    self.users_view.update_user()
+                    ctx.invoke(update_user_cmd)
                 elif choice == 4:
                     self.users_view.delete_user()
                 elif choice == 5:

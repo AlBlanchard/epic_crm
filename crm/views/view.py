@@ -3,15 +3,20 @@ import click
 import platform
 import os
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterable, List, Optional
-from sqlalchemy import Table
+from typing import Any, Dict, Iterable, List, Optional, Callable, TypeVar
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
 from ..database import SessionLocal
 from rich.table import Table
 from rich.console import Console
 from ..errors.exceptions import UserCancelledInput
 from ..utils.app_state import AppState
+from ..utils.validations import Validations
+from getpass import getpass
+
+
+# Type variable pour des types génériques
+# Permet de dire "n'importe quel type en entrée mais ce sera le même type en sortie"
+T = TypeVar("T")
 
 
 class BaseView(ABC):
@@ -60,46 +65,111 @@ class BaseView(ABC):
         else:
             os.system("clear")
 
+    def _print_table(
+        self, title: str, columns: List[str], rows: List[Dict[str, Any]]
+    ) -> None:
+        table = Table(title=title)
+        for col in columns:
+            table.add_column(col, overflow="fold")
+        for r in rows:
+            table.add_row(*[str(r.get(c, "")) for c in columns])
+        self.console.print(table)
+
     @staticmethod
-    def get_valid_input(prompt, validation_func=None, default_value=None):
+    def get_valid_input(
+        prompt: str,
+        *,
+        default: Optional[T] = None,
+        transform: Optional[Callable[[str], T]] = None,
+        validate: Optional[Callable[[T], None]] = None,
+        list_to_compare: Optional[Iterable[str]] = None,
+        quit_value: str = "q",
+        quit_aliases: Iterable[str] = ("q", "quit", "exit"),
+        show_default: bool = True,
+        allow_empty: bool = False,
+        max_attempts: Optional[int] = 3,
+    ) -> T:
         """
-        Demande une entrée à l'utilisateur et vérifie qu'elle n'est pas vide.
-        'q' pour annuler l'entrée.
-        prompt : Texte affiché à l'utilisateur.
-        validation_func : Fonction de validation optionnelle (défaut : None).
-        default_value : Valeur par défaut optionnelle (défaut : None).
+        Demande une entrée utilisateur, transforme et valide.
+        - 'default': valeur de repli si entrée vide (gérée par click).
+        - 'transform': str -> T (int, float, datetime, objet métier...).
+        - 'validate': lève une exception si invalide.
+        - 'quit_value'/'quit_aliases': mots clés pour annuler (insensibles à la casse).
+        - 'allow_empty': autorise explicitement la chaîne vide (sans default).
+        - 'max_attempts': stoppe après N essais (None = illimité).
         """
-        original_prompt = prompt
+        attempts = 0
+        aliases = {a.casefold().strip() for a in quit_aliases} | {
+            quit_value.casefold().strip()
+        }
 
         while True:
-            if default_value:
-                full_prompt = f"{original_prompt} (défaut : {default_value}) : "
-            else:
-                full_prompt = f"{original_prompt} : "
+            if max_attempts is not None and attempts >= max_attempts:
+                AppState.set_error_message("Nombre maximal d'essais atteint.")
+                raise ValueError("Essais max atteints, retour au menu.")
 
-            user_input = input(full_prompt).strip()
+            try:
+                AppState.display_error_or_success_message()
 
-            if user_input == "q":
-                raise UserCancelledInput("Action annulée par l'utilisateur.")
+                raw = click.prompt(prompt, default=default, show_default=show_default)
+                raw_str = str(raw).strip()
 
-            if not user_input and not default_value:
-                print("--> Ce champ est obligatoire. Veuillez réessayer.\n")
-                continue
+                # Quit intention
+                if raw_str.casefold() in aliases:
 
-            if not user_input and default_value:
-                return default_value
+                    raise UserCancelledInput("Action annulée par l'utilisateur.")
 
-            if validation_func:
+                # Vide sans default
+                if raw_str == "" or None and default is None and not allow_empty:
+                    AppState.set_error_message("Ce champ est obligatoire.")
+                    attempts += 1
+                    continue
+
+                # Transform
                 try:
-                    validation_func(user_input)
-
+                    value: T
+                    if transform:
+                        value = transform(raw_str)
+                    else:
+                        # Sans transform, on retourne tel quel (str ou default non-str)
+                        value = raw  # type: ignore[assignment]
                 except Exception as e:
-                    AppState.set_error_message(str(e))
+                    AppState.set_error_message(f"Conversion invalide: {e}")
+                    attempts += 1
+                    continue
 
-            # Efface le message d'erreur s'il y a eu une mauvaise saise
-            # Pour éviter de l'afficher à tort au menu suivant
-            AppState.clear_error_message()
-            return user_input
+                # Validate
+                if validate:
+                    try:
+                        validate(value)
+                    except Exception as e:
+                        AppState.set_error_message(str(e))
+                        attempts += 1
+                        continue
+
+                # Dans la liste
+                if list_to_compare is not None:
+                    try:
+                        str_value = str(value).strip()
+                        Validations.is_in_list(str_value, list_to_compare)
+
+                    except Exception as e:
+                        AppState.set_error_message(f"{e}")
+                        attempts += 1
+                        continue
+
+                return value
+
+            except UserCancelledInput:
+                # AppState déjà positionné neutre ci-dessus
+                raise
+            except click.Abort:
+                AppState.set_neutral_message("Action annulée par l'utilisateur.")
+                raise
+            except Exception as e:
+                AppState.set_error_message(f"Erreur: {e}")
+                attempts += 1
+                continue
 
     def print_quit_option(self) -> None:
         self.console.print("[dim]0. Quitter[/dim]")
@@ -122,13 +192,3 @@ class BaseView(ABC):
         self.console.print(farewell)
         self.session.close()
         sys.exit(0)
-
-    def _print_table(
-        self, title: str, columns: List[str], rows: List[Dict[str, Any]]
-    ) -> None:
-        table = Table(title=title)
-        for col in columns:
-            table.add_column(col, overflow="fold")
-        for r in rows:
-            table.add_row(*[str(r.get(c, "")) for c in columns])
-        self.console.print(table)
