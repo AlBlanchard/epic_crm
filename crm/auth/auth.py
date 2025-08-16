@@ -28,6 +28,10 @@ class Authentication:
     )
 
     @staticmethod
+    def hasher(password: str) -> str:
+        return Authentication.ph.hash(password)
+
+    @staticmethod
     def authenticate_user(username: str, password: str, db: Session) -> dict[str, str]:
         user = db.query(User).filter_by(username=username).first()
         if not user:
@@ -149,7 +153,6 @@ class Authentication:
         """Vérifie si le mot de passe brut correspond au mot de passe haché."""
         try:
             hash_value = str(hashed_password) if hashed_password is not None else ""
-            print(Authentication.ph.verify(hash_value, raw_password))
             return Authentication.ph.verify(hash_value, raw_password)
         except Exception:
             return False

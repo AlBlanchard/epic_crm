@@ -86,7 +86,6 @@ class BaseView(ABC):
         quit_value: str = "q",
         quit_aliases: Iterable[str] = ("q", "quit", "exit"),
         show_default: bool = True,
-        allow_empty: bool = False,
         max_attempts: Optional[int] = 3,
     ) -> T:
         """
@@ -95,7 +94,6 @@ class BaseView(ABC):
         - 'transform': str -> T (int, float, datetime, objet métier...).
         - 'validate': lève une exception si invalide.
         - 'quit_value'/'quit_aliases': mots clés pour annuler (insensibles à la casse).
-        - 'allow_empty': autorise explicitement la chaîne vide (sans default).
         - 'max_attempts': stoppe après N essais (None = illimité).
         """
         attempts = 0
@@ -107,21 +105,18 @@ class BaseView(ABC):
             if max_attempts is not None and attempts >= max_attempts:
                 AppState.set_error_message("Nombre maximal d'essais atteint.")
                 raise ValueError("Essais max atteints, retour au menu.")
-
+            AppState.display_error_or_success_message()
             try:
-                AppState.display_error_or_success_message()
 
                 raw = click.prompt(prompt, default=default, show_default=show_default)
                 raw_str = str(raw).strip()
 
                 # Quit intention
                 if raw_str.casefold() in aliases:
-
                     raise UserCancelledInput("Action annulée par l'utilisateur.")
 
-                # Vide sans default
-                if raw_str == "" or None and default is None and not allow_empty:
-                    AppState.set_error_message("Ce champ est obligatoire.")
+                if raw_str is None and default is None:
+                    AppState.set_error_message("Ce champ est requis.")
                     attempts += 1
                     continue
 

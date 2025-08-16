@@ -25,3 +25,21 @@ class Validations:
         if value not in list:
             raise ValueError(f"{value} n'existe pas. Veuillez réessayer.")
         return True
+
+    @staticmethod
+    def not_empty(value: str) -> bool:
+        if not value.strip():
+            raise ValueError("Ce champ ne peut pas être vide.")
+        if value.strip() == "":
+            raise ValueError("Ce champ ne peut pas être vide.")
+        return True
+
+    @staticmethod
+    def confirm_action(prompt: str) -> bool:
+        response = input(f"{prompt} (o/n) : ").strip().lower()
+        if response == "o":
+            return True
+        elif response == "n":
+            return False
+        else:
+            raise ValueError("Réponse invalide. Veuillez répondre par 'o' ou 'n'.")

@@ -27,7 +27,9 @@ class User(AbstractBase):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
 
     # Relation many-tomany via la table d'association user_roles
-    user_roles = relationship("UserRole", back_populates="user")
+    user_roles = relationship(
+        "UserRole", back_populates="user", cascade="all, delete-orphan"
+    )
 
     clients = relationship("Client", back_populates="sales_contact")
     contracts = relationship("Contract", back_populates="sales_contact")

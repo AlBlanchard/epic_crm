@@ -7,6 +7,7 @@ from ..crud.user_crud import UserCRUD
 from ..crud.role_crud import RoleCRUD
 from ..serializers.user_serializer import UserSerializer
 from ..models.user import User
+from ..utils.app_state import AppState
 
 
 class UserController(AbstractController):
@@ -37,7 +38,7 @@ class UserController(AbstractController):
         return self.serializer.serialize_list(rows)
 
     # ---------- Read ----------
-    def list_users(
+    def get_all_users(
         self,
         *,
         filters: Optional[Dict[str, Any]] = None,
@@ -90,6 +91,12 @@ class UserController(AbstractController):
             else UserSerializer(fields=fields, include_roles=include_roles)
         )
         return ser.serialize(me)
+
+    def get_user_name(self, user_id: int) -> str:
+        user = self.users.get_by_id(user_id)
+        if not user:
+            raise ValueError("Utilisateur introuvable.")
+        return user.username
 
     # ---------- Create ----------
     def create_user(self, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -151,32 +158,50 @@ class UserController(AbstractController):
             raise ValueError("Utilisateur introuvable.")
 
     # ---------- Roles ----------
-    def add_role(self, user_id: int, role_name: str) -> None:
+    def add_role(self, user_id: int, role_id: int) -> None:
         me = self._get_current_user()
         self._ensure_admin(me)
 
-        role = self.roles.find_by_name(role_name)
+        role = self.roles.get_by_id(role_id)
         if not role:
-            raise ValueError(f"Rôle '{role_name}' introuvable.")
+            raise ValueError(f"Rôle id : '{role_id}' introuvable.")
+
+        if self.has_role(user_id, role.id):
+            raise ValueError(f"L'utilisateur a déjà le rôle : {role.name}")
+
         self.users.add_role_to_user(user_id, role.id)
 
-    def remove_role(self, user_id: int, role_name: str) -> None:
+    def remove_role(self, user_id: int, role_id: int) -> None:
         me = self._get_current_user()
         self._ensure_admin(me)
 
-        role = self.roles.find_by_name(role_name)
+        role = self.roles.get_by_id(role_id)
         if not role:
-            raise ValueError(f"Rôle '{role_name}' introuvable.")
+            raise ValueError(f"Rôle id : '{role_id}' introuvable.")
         ok = self.users.remove_role_from_user(user_id, role.id)
         if not ok:
             raise ValueError("Rôle non associé à l'utilisateur.")
 
-    def replace_roles(self, user_id: int, role_names: List[str]) -> None:
+    def replace_roles(self, user_id: int, role_ids: List[int]) -> None:
         me = self._get_current_user()
         self._ensure_admin(me)
 
-        roles = [r for r in (self.roles.find_by_name(n) for n in role_names) if r]
-        if len(roles) != len(role_names):
-            missing = set(role_names) - {r.name for r in roles}
-            raise ValueError(f"Rôles introuvables: {', '.join(sorted(missing))}")
+        roles = [r for r in (self.roles.get_by_id(n) for n in role_ids) if r]
+        if len(roles) != len(role_ids):
+            missing = set(role_ids) - {r.id for r in roles}
+            raise ValueError(
+                f"Rôles introuvables: {', '.join(sorted(map(str, missing)))})"
+            )
         self.users.replace_user_roles(user_id, [r.id for r in roles])
+
+    def get_user_roles(self, user_id: int) -> List[str]:
+        user = self.users.get_by_id(user_id)
+        if not user:
+            raise ValueError("Utilisateur introuvable.")
+        return [r.name for r in user.roles]
+
+    def has_role(self, user_id: int, role_id: int) -> bool:
+        user = self.users.get_by_id(user_id)
+        if not user:
+            raise ValueError("Utilisateur introuvable.")
+        return any(r.id == role_id for r in user.roles)

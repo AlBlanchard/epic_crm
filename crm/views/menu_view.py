@@ -13,7 +13,7 @@ from ..controllers.event_controller import EventController
 from ..controllers.user_controller import UserController
 from ..controllers.role_controller import RoleController
 from ..utils.app_state import AppState
-from .user_view import create_user_cmd, list_users_cmd, update_user_cmd
+from .user_view import create_user_cmd, list_users_cmd, update_user_cmd, delete_user_cmd
 
 
 class MenuView(BaseView):
@@ -200,7 +200,7 @@ class MenuView(BaseView):
                 elif choice == 3:
                     ctx.invoke(update_user_cmd)
                 elif choice == 4:
-                    self.users_view.delete_user()
+                    ctx.invoke(delete_user_cmd)
                 elif choice == 5:
                     break
                 else:

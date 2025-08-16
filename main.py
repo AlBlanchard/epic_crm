@@ -3,7 +3,13 @@ from rich.console import Console
 
 from crm.views.auth_view import AuthView
 from crm.views.menu_view import menu_cmd
-from crm.views.user_view import create_user_cmd, list_users_cmd, update_user_cmd
+from crm.views.user_view import (
+    create_user_cmd,
+    list_users_cmd,
+    update_user_cmd,
+    delete_user_cmd,
+    update_user_password_cmd,
+)
 from crm.utils.app_state import AppState
 
 
@@ -62,6 +68,8 @@ cli.add_command(menu_cmd)  # accès via: cli menu
 cli.add_command(create_user_cmd)  # accès via: cli create-user
 cli.add_command(list_users_cmd)
 cli.add_command(update_user_cmd)
+cli.add_command(update_user_password_cmd)
+cli.add_command(delete_user_cmd)
 
 
 if __name__ == "__main__":
