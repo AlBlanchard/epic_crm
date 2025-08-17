@@ -1,5 +1,5 @@
 # crm/controllers/user_controller.py
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 from .base import AbstractController
 from ..auth.auth import Authentication
 from ..auth.permission import Permission
@@ -113,6 +113,14 @@ class UserController(AbstractController):
         if not user:
             raise ValueError("Utilisateur introuvable.")
         return user.username
+
+    def get_users_name_from_id_list(self, user_ids: List[int]) -> List[Tuple[int, str]]:
+        """
+        Récupère les noms d'utilisateur à partir d'une liste d'IDs.
+        Renvoie une liste de tuples (id, username).
+        """
+        users = self.users.get_by_ids(user_ids)
+        return [(u.id, u.username) for u in users]
 
     # ---------- Create ----------
     def create_user(self, data: Dict[str, Any]) -> Dict[str, Any]:

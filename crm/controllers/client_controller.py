@@ -44,13 +44,13 @@ class ClientController(AbstractController):
         order_by: Optional[str] = None,
         fields: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
+
         me = self._get_current_user()
-        # admin -> tous ; sales -> seulement les siens
-        if Permission.is_admin(me):
-            rows = self.clients.get_all(filters=filters, order_by=order_by)
-        else:
-            # on ignore tout filtre qui tenterait de bypasser le scope
-            rows = self.clients.get_clients_by_sales_contact(me.id)
+        if not Permission.read_permission(me, "client"):
+            raise PermissionError("Accès refusé.")
+
+        rows = self.clients.get_all(filters=filters, order_by=order_by)
+
         ser = self.serializer if fields is None else ClientSerializer(fields=fields)
         return ser.serialize_list(rows)
 
@@ -59,7 +59,11 @@ class ClientController(AbstractController):
         *,
         fields: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
+
         me = self._get_current_user()
+        if not Permission.read_permission(me, "client"):
+            raise PermissionError("Accès refusé.")
+
         rows = self.clients.get_clients_by_sales_contact(me.id)
         ser = self.serializer if fields is None else ClientSerializer(fields=fields)
         return ser.serialize_list(rows)
@@ -101,6 +105,9 @@ class ClientController(AbstractController):
         """
         me = self._get_current_user()
 
+        if not Permission.create_permission(me, "client"):
+            raise PermissionError("Accès refusé.")
+
         # si pas fourni, on assigne à soi-même
         sales_contact_id = data.get("sales_contact_id", me.id)
 
@@ -109,7 +116,6 @@ class ClientController(AbstractController):
                 "Seul un administrateur peut assigner à un autre commercial."
             )
 
-        # le controller peut encore faire de la validation légère ici (email, etc.) via DTO si besoin
         payload = {**data, "sales_contact_id": sales_contact_id}
         client = self.clients.create_client(payload)
         return self.serializer.serialize(client)

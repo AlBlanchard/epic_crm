@@ -56,6 +56,10 @@ class UserCRUD(AbstractBaseCRUD):
         """Récupère un utilisateur par son ID."""
         return self.session.get(User, user_id)
 
+    def get_by_ids(self, user_ids: List[int]) -> List[User]:
+        """Récupère plusieurs utilisateurs par leurs IDs."""
+        return self.session.query(User).filter(User.id.in_(user_ids)).all()
+
     def find_by_username(self, username: str) -> Optional[User]:
         """Trouve un utilisateur par son nom d'utilisateur."""
         return self.session.query(User).filter_by(username=username).first()

@@ -144,12 +144,10 @@ class UserView(BaseView):
         try:
             self._clear_screen()
 
-            username = self.get_valid_input("Nom d'utilisateur pour le test")
-            email = self.get_valid_input("Email pour le test")
-            employee_number = self.get_valid_input(
-                "Numéro d'employé pour le test", transform=int
-            )
-            password = self.get_valid_password("Mot de passe pour le test : ")
+            username = self.get_valid_input("Nom d'utilisateur")
+            email = self.get_valid_input("Email")
+            employee_number = self.get_valid_input("Numéro d'employé", transform=int)
+            password = self.get_valid_password("Mot de passe : ")
 
             with SessionLocal() as session:
                 roles = RoleController(session=session)

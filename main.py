@@ -14,6 +14,10 @@ from crm.cli.user_commands import (
     add_user_role_cmd,
     remove_user_role_cmd,
 )
+from crm.cli.client_commands import (
+    create_client_cmd,
+    list_clients_cmd,
+)
 from crm.utils.app_state import AppState
 
 
@@ -68,6 +72,8 @@ cli.add_command(logout_cmd)  # accès via: cli logout
 cli.add_command(menu_cmd)  # accès via: cli menu
 
 # Autres commandes réutilisables depuis le menu ou en direct
+
+# -- Users--
 cli.add_command(create_user_cmd)
 cli.add_command(list_users_cmd)
 cli.add_command(update_user_cmd)
@@ -77,6 +83,10 @@ cli.add_command(update_user_infos_cmd)
 cli.add_command(update_user_password_cmd)
 cli.add_command(add_user_role_cmd)
 cli.add_command(remove_user_role_cmd)
+
+# -- Clients--
+cli.add_command(create_client_cmd)
+cli.add_command(list_clients_cmd)
 
 if __name__ == "__main__":
     cli()

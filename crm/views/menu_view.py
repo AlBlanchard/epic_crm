@@ -69,11 +69,11 @@ class MenuView(BaseView):
                 if choice == 0:
                     self.handle_quit()
                 if choice == 1:
-                    self._menu_clients()
+                    self._menu_clients(ctx)
                 elif choice == 2:
-                    self._menu_contracts()
+                    self._menu_contracts(ctx)
                 elif choice == 3:
-                    self._menu_events()
+                    self._menu_events(ctx)
                 elif choice == 4:
                     self._menu_users(ctx)
                 elif choice == 5:
@@ -86,7 +86,7 @@ class MenuView(BaseView):
             except Exception as e:
                 self.app_state.set_error_message(str(e))
 
-    def _menu_clients(self) -> None:
+    def _menu_clients(self, ctx: click.Context) -> None:
         while True:
             self._clear_screen()
             self.console.print("\n[bold cyan]— Clients —[/bold cyan]")
@@ -105,13 +105,13 @@ class MenuView(BaseView):
                 if choice == 0:
                     self.handle_quit()
                 elif choice == 1:
-                    self.clients_view.create_client()
+                    self.cli_utils.invoke(ctx, "create-client")
                 elif choice == 2:
-                    self.clients_view.list_clients()
+                    self.cli_utils.invoke(ctx, "list-clients")
                 elif choice == 3:
-                    self.clients_view.update_client()
+                    self.cli_utils.invoke(ctx, "update-client")
                 elif choice == 4:
-                    self.clients_view.delete_client()
+                    self.cli_utils.invoke(ctx, "delete-client")
                 elif choice == 5:
                     break
                 else:
