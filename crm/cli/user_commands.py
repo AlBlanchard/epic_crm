@@ -1,161 +1,366 @@
 import click
-from ..models.user import User
-from ..models.user_role import UserRole
-from crm.database import SessionLocal
-from getpass import getpass
-from pathlib import Path
-from ..data_reader import DataReader
 from ..controllers.user_controller import UserController
 from ..controllers.role_controller import RoleController
-
-ACCESS_TOKEN_PATH = Path("access_token.jwt")
-REFRESH_TOKEN_PATH = Path("refresh_token.jwt")
-
-
-@click.group(name="user-cli")
-def user_cli():
-    """Commandes liées aux utilisateurs."""
-    pass
+from ..views.user_view import UserView
+from ..views.menu_view import MenuView
+from ..database import SessionLocal
+from ..utils.validations import Validations
+from ..errors.exceptions import UserCancelledInput
+from ..auth.permission import Permission
 
 
-@user_cli.command(name="list-clients")
-def list_clients():
-    """Affiche tous les clients (si rôle sales)."""
-    with SessionLocal() as session:
-        try:
-            reader = DataReader(session)
-            clients = reader.get_all_clients()
-            for client in clients:
-                click.echo(f"{client.id} - {client.name}")
-        except Exception as e:
-            click.echo(f"Erreur : {e}")
+@click.command(name="create-user")
+@click.pass_context
+def create_user_cmd(ctx: click.Context) -> None:
+    # On réutilise la vue attachée au contexte si dispo, sinon on en crée une
+    view: UserView = (
+        ctx.obj.get("user_view")
+        if ctx and ctx.obj and "user_view" in ctx.obj
+        else UserView()
+    )
+    ctrl: UserController = ctx.obj.get("user_controller") or UserController(
+        session=SessionLocal()
+    )
+
+    # Il y a une vérif dans le ctrl mais on la refait ici car sinon ça lance les prompts
+    me = ctrl._get_current_user()
+    if not Permission.create_permission(me, "user"):
+        raise PermissionError("Accès refusé.")
+
+    result = view.create_user_flow()
+    if result is None:
+        return
+
+    data, role_id = result
+
+    try:
+        new_user = ctrl.create_user(data)
+        ctrl.add_role(new_user["id"], int(role_id), create_new_user=True)
+
+        view.app_state.set_success_message("L'utilisateur a été créé avec succès.")
+    except Exception as e:
+        if view.app_state:
+            view.app_state.set_error_message(str(e))
 
 
-@user_cli.command(name="list-contracts")
-def list_contracts():
-    """Affiche tous les contrats (si rôle sales)."""
-    with SessionLocal() as session:
-        try:
-            reader = DataReader(session)
-            contracts = reader.get_all_contracts()
-            for contract in contracts:
-                click.echo(f"{contract.id} - {contract.description}")
-        except Exception as e:
-            click.echo(f"Erreur : {e}")
+@click.command(name="list-users")
+@click.pass_context
+def list_users_cmd(ctx: click.Context) -> None:
+    # On réutilise la vue attachée au contexte si dispo, sinon on en crée une
+    view: UserView = (
+        ctx.obj.get("user_view")
+        if ctx and ctx.obj and "user_view" in ctx.obj
+        else UserView()
+    )
+
+    ctrl: UserController = ctx.obj.get("user_controller") or UserController(
+        session=SessionLocal()
+    )
+
+    rows = ctrl.get_all_users()
+    view.list_users(rows, selector=False)
 
 
-@user_cli.command(name="list-events")
-def list_events():
-    """Affiche tous les événements (si rôle support)."""
-    with SessionLocal() as session:
-        try:
-            reader = DataReader(session)
-            events = reader.get_all_events()
-            for event in events:
-                click.echo(f"{event.id} - {event.title}")
-        except Exception as e:
-            click.echo(f"Erreur : {e}")
+@click.command(name="update-user")
+@click.option("--id", "user_id", type=int, help="ID de l'utilisateur à modifier")
+@click.pass_context
+def update_user_cmd(ctx: click.Context, user_id: int | None) -> None:
+    """Ouvre un menu de modification pour l'utilisateur spécifié."""
+    ctx.ensure_object(dict)
+    console = ctx.obj.get("console")
+
+    user_view: UserView = ctx.obj.get("user_view") or UserView(console=console)
+    menu_view: MenuView = ctx.obj.get("menu_view") or MenuView(console=console)
+
+    ctrl: UserController = ctx.obj.get("user_controller") or UserController(
+        session=SessionLocal()
+    )
+
+    # Sélection de l'utilisateur si pas d'id transmis
+    if not user_id:
+        rows = ctrl.get_all_users()
+        user_id = user_view.list_users(rows, selector=True)
+        if not user_id:
+            return
+
+    username = ctrl.get_user_name(user_id)
+    menu_view.modify_user_menu(user_id, username, ctx)
 
 
-@user_cli.command(name="list-users")
-def list_users():
-    """Affiche tous les utilisateurs (si rôle admin)."""
-    with SessionLocal() as session:
-        try:
-            reader = DataReader(session)
-            users = reader.get_all_users()
-            for user in users:
-                click.echo(f"{user.id} - {user.username}")
-        except Exception as e:
-            click.echo(f"Erreur : {e}")
+@click.command(name="update-user-infos")
+@click.option("--id", "user_id", type=int, help="ID de l'utilisateur à modifier")
+@click.pass_context
+def update_user_infos_cmd(ctx: click.Context, user_id: int | None) -> None:
+    """Modifie les infos non sensibles de l'utilisateur spécifié."""
+    ctx.ensure_object(dict)
+    console = ctx.obj.get("console")
 
+    view: UserView = ctx.obj.get("user_view") or UserView(console=console)
 
-@user_cli.command(name="list-roles")
-def list_roles():
-    """Affiche tous les rôles (si rôle admin)."""
-    with SessionLocal() as session:
-        try:
-            reader = DataReader(session)
-            roles = reader.get_all_roles()
-            for role in roles:
-                click.echo(f"{role.id} - {role.name}")
-        except Exception as e:
-            click.echo(f"Erreur : {e}")
+    ctrl: UserController = ctx.obj.get("user_controller") or UserController(
+        session=SessionLocal()
+    )
 
+    # Sélection de l'utilisateur si pas d'id transmis
+    if not user_id:
+        rows = ctrl.get_all_users()
+        user_id = view.list_users(rows, selector=True)
+        if not user_id:
+            return
 
-@user_cli.command(name="hash-password")
-def hashpassword():
-    """Génère un hash pour un mot de passe."""
-    password = getpass("Entrez le mot de passe à hasher : ")
-    user = User()
-    hashed_password = user.set_password(password)
-    click.echo(f"Hash du mot de passe : {hashed_password}")
+    # Permission pour ne pas lancer les prompts, verif dans le ctrl tout de même
+    me = ctrl._get_current_user()
+    if not Permission.update_permission(me, "user"):
+        raise PermissionError("Accès refusé.")
 
+    user_dict = ctrl.get_user(user_id)
+    result = view.update_user_infos_flow(user_dict)
 
-@user_cli.command(name="create-user")
-def create_user():
-    """
-    Crée un utilisateur de test via les controllers :
-    - demande username / email / employee_number / password
-    - liste les rôles existants (via RoleController)
-    - crée l'utilisateur (UserController.create_user)
-    - assigne le rôle choisi (UserController.add_role)
-    """
-    username = click.prompt("Nom d'utilisateur pour le test")
-    email = click.prompt("Email pour le test")
-    employee_number = click.prompt("Numéro d'employé pour le test", type=int)
-    password = getpass("Mot de passe pour le test : ")
+    if result is None:
+        return
 
-    with SessionLocal() as session:
-        print("Création de l'utilisateur de test...")
-        users = UserController(session=session)
-        print("Chargement des rôles...")
-        roles = RoleController(session=session)
+    uid, payload = result
 
-        try:
-            # liste les rôles existants (admin requis)
-            all_roles = roles.list_roles()
-            if not all_roles:
-                click.echo("Aucun rôle n'existe encore. Créez-en d'abord (admin).")
-                return
+    # revalidation côté ctrl, source de vérité
+    try:
+        _ = ctrl.get_user(int(uid))
+    except Exception as e:
+        view.app_state.set_error_message(str(e))
+        return
 
-            click.echo("Rôles disponibles :")
-            for r in all_roles:
-                click.echo(f"{r['id']} - {r['name']}")
-
-            chosen_id = click.prompt(
-                "Sélectionner le role_id souhaité", type=int, default=all_roles[0]["id"]
+    try:
+        ctrl.update_user(uid, payload)
+        if view.app_state:
+            view.app_state.set_success_message(
+                "L'utilisateur a été mis à jour avec succès."
             )
-            role_row = next((r for r in all_roles if r["id"] == chosen_id), None)
-            if not role_row:
-                click.echo(f"Rôle {chosen_id} introuvable.")
-                return
+    except Exception as e:
+        if view.app_state:
+            view.app_state.set_error_message(str(e))
 
-            chosen_role_name = role_row["name"]
 
-            # créer l'utilisateur (admin requis)
-            print("Création de l'utilisateur...")
-            new_user = users.create_user(
-                {
-                    "username": username,
-                    "email": email,
-                    "employee_number": employee_number,
-                    "password": password,  # hashé par le modèle côté CRUD
-                }
+@click.command(name="update-user-password")
+@click.option(
+    "--id",
+    "user_id",
+    type=int,
+    help="ID de l'utilisateur dont le mot de passe doit être modifié",
+)
+@click.pass_context
+def update_user_password_cmd(ctx: click.Context, user_id: int | None) -> None:
+    """Modifie uniquement le mot de passe de l'utilisateur spécifié."""
+    ctx.ensure_object(dict)
+    console = ctx.obj.get("console")
+
+    view: UserView = ctx.obj.get("user_view") or UserView(console=console)
+
+    ctrl: UserController = ctx.obj.get("user_controller") or UserController(
+        session=SessionLocal()
+    )
+
+    # Sélection de l'utilisateur si pas d'id transmis
+    if not user_id:
+        rows = ctrl.get_all_users()
+        user_id = view.list_users(rows, selector=True)
+        if not user_id:
+            return
+
+    # Permission pour ne pas lancer les prompts, verif dans le ctrl tout de même
+    me = ctrl._get_current_user()
+    if not Permission.update_permission(me, "user"):
+        raise PermissionError("Accès refusé.")
+
+    new_pwd = view.update_user_password_flow()
+    if new_pwd is None:
+        return
+
+    # revalidation côté ctrl, source de vérité
+    try:
+        _ = ctrl.get_user(int(user_id))
+    except Exception as e:
+        view.app_state.set_error_message(str(e))
+        return
+
+    try:
+        ctrl.update_user(user_id, {"password": new_pwd})
+        if view.app_state:
+            view.app_state.set_success_message(
+                "Le mot de passe de l'utilisateur a été mis à jour avec succès."
+            )
+    except Exception as e:
+        if view.app_state:
+            view.app_state.set_error_message(str(e))
+
+
+@click.command(name="delete-user")
+@click.pass_context
+def delete_user_cmd(ctx: click.Context, user_id: int | None = None) -> None:
+    ctx.ensure_object(dict)
+    console = ctx.obj.get("console")
+
+    view: UserView = ctx.obj.get("user_view") or UserView(console=console)
+
+    ctrl: UserController = ctx.obj.get("user_controller") or UserController(
+        session=SessionLocal()
+    )
+
+    # Sélection de l'utilisateur si pas d'id transmis
+    if not user_id:
+        rows = ctrl.get_all_users()
+        user_id = view.list_users(rows, selector=True)
+        if not user_id:
+            return
+
+    me = ctrl._get_current_user()
+    if not Permission.delete_permission(me, "user"):
+        raise PermissionError("Accès refusé.")
+
+    try:
+        user = ctrl.get_user(int(user_id))
+    except Exception as e:
+        view.app_state.set_error_message(str(e))
+        return
+
+    confirmed = view.delete_user_flow(user["username"])
+
+    if not confirmed:
+        raise UserCancelledInput("Suppression annulée par l'utilisateur.")
+
+    try:
+        ctrl.delete_user(user["id"])
+        view.app_state.set_success_message("L'utilisateur a été supprimé avec succès.")
+    except Exception as e:
+        view.app_state.set_error_message(str(e))
+
+
+@click.command(name="add-user-role")
+@click.option(
+    "--id",
+    "user_id",
+    type=int,
+    help="ID de l'utilisateur auquel ajouter un rôle",
+)
+@click.option(
+    "--role",
+    "role_id",
+    type=int,
+    help="ID du rôle à ajouter à l'utilisateur",
+)
+@click.pass_context
+def add_user_role_cmd(
+    ctx: click.Context, user_id: int | None, role_id: int | None
+) -> None:
+    """Ajoute un rôle à l'utilisateur spécifié."""
+    ctx.ensure_object(dict)
+    console = ctx.obj.get("console")
+
+    view: UserView = ctx.obj.get("user_view") or UserView(console=console)
+
+    ctrl: UserController = ctx.obj.get("user_controller") or UserController(
+        session=SessionLocal()
+    )
+
+    role_ctrl: RoleController = ctx.obj.get("role_controller") or RoleController(
+        session=SessionLocal()
+    )
+
+    # Sélection de l'utilisateur si pas d'id transmis
+    if not user_id:
+        rows = ctrl.get_all_users()
+        user_id = view.list_users(rows, selector=True)
+        if not user_id:
+            return
+
+    # Sélection du rôle si pas de rôle transmis
+    if not role_id:
+        roles = role_ctrl.list_roles()
+        actual_roles = ctrl.get_user_roles(user_id)
+        role_id = view.add_user_role_flow(actual_roles, roles)
+        if not role_id:
+            return
+
+    # revalidation côté ctrl, source de vérité
+    try:
+        _ = ctrl.get_user(int(user_id))
+        _ = role_ctrl.get_role(int(role_id))
+    except Exception as e:
+        view.app_state.set_error_message(str(e))
+        return
+
+    try:
+        ctrl.add_role(user_id, role_id)
+        if view.app_state:
+            view.app_state.set_success_message(
+                "Le rôle a été ajouté à l'utilisateur avec succès."
+            )
+    except Exception as e:
+        if view.app_state:
+            view.app_state.set_error_message(str(e))
+
+
+@click.command(name="remove-user-role")
+@click.option(
+    "--id",
+    "user_id",
+    type=int,
+    help="ID de l'utilisateur dont on veut retirer un rôle",
+)
+@click.option(
+    "--role",
+    "role_name",
+    type=str,
+    help="Nom du rôle à retirer de l'utilisateur",
+)
+@click.pass_context
+def remove_user_role_cmd(
+    ctx: click.Context, user_id: int | None, role_name: str | None
+) -> None:
+    """Retire un rôle de l'utilisateur spécifié."""
+    ctx.ensure_object(dict)
+    console = ctx.obj.get("console")
+
+    view: UserView = ctx.obj.get("user_view") or UserView(console=console)
+
+    ctrl: UserController = ctx.obj.get("user_controller") or UserController(
+        session=SessionLocal()
+    )
+
+    role_ctrl: RoleController = ctx.obj.get("role_controller") or RoleController(
+        session=SessionLocal()
+    )
+
+    # Sélection de l'utilisateur si pas d'id transmis
+    if not user_id:
+        rows = ctrl.get_all_users()
+        user_id = view.list_users(rows, selector=True)
+        if not user_id:
+            return
+
+    # Sélection du rôle si pas de rôle transmis
+    if not role_name:
+        actual_roles = ctrl.get_user_roles(user_id)
+        role_name = view.remove_user_role_flow(actual_roles)
+        if not role_name:
+            return
+
+    try:
+        # revalidation côté ctrl, source de vérité
+        _ = ctrl.get_user(int(user_id))
+        role = role_ctrl.get_role_by_name(role_name)
+
+        confirmed = Validations.confirm_action(
+            f"Êtes-vous sûr de vouloir supprimer le rôle '{role_name}' de l'utilisateur ?"
+        )
+
+        if not confirmed:
+            return
+
+        ctrl.remove_role(user_id, role["id"])
+        if view.app_state:
+            view.app_state.set_success_message(
+                "Le rôle a été retiré de l'utilisateur avec succès."
             )
 
-            # 3) assigner le rôle
-            print("Assignation du rôle...")
-            users.add_role(new_user["id"], chosen_role_name)
-
-            click.echo(
-                f"Utilisateur de test créé : {new_user['username']} (id={new_user['id']})"
-            )
-            click.echo(f"Rôle assigné : {chosen_role_name}")
-
-        except PermissionError as e:
-            click.echo(f"Permission refusée : {e}")
-        except ValueError as e:
-            click.echo(f"Erreur : {e}")
-        except Exception as e:
-            click.echo(f"Erreur inattendue : {e}")
+    except Exception as e:
+        view.app_state.set_error_message(str(e))
+        return

@@ -47,7 +47,10 @@ class UserController(AbstractController):
         include_roles: bool = True,
     ) -> List[Dict[str, Any]]:
         me = self._get_current_user()
-        self._ensure_admin(me)
+
+        if not Permission.read_permission(me, "user"):
+            raise PermissionError("Accès refusé.")
+
         rows = self.users.get_all(filters=filters, order_by=order_by)
         ser = (
             self.serializer
@@ -65,6 +68,10 @@ class UserController(AbstractController):
     ) -> Dict[str, Any]:
         me = self._get_current_user()
         target = self.users.get_by_id(user_id)
+
+        if not Permission.read_permission(me, "user", target_id=user_id):
+            raise PermissionError("Accès refusé.")
+
         if not target:
             raise ValueError("Utilisateur introuvable.")
 
@@ -85,6 +92,10 @@ class UserController(AbstractController):
         include_roles: bool = True,
     ) -> Dict[str, Any]:
         me = self._get_current_user()
+
+        if not Permission.read_permission(me, "user", target_id=me.id):
+            raise PermissionError("Accès refusé.")
+
         ser = (
             self.serializer
             if (fields is None and include_roles)
@@ -94,6 +105,11 @@ class UserController(AbstractController):
 
     def get_user_name(self, user_id: int) -> str:
         user = self.users.get_by_id(user_id)
+        me = self._get_current_user()
+
+        if not Permission.read_permission(me, "user", target_id=user_id):
+            raise PermissionError("Accès refusé.")
+
         if not user:
             raise ValueError("Utilisateur introuvable.")
         return user.username
@@ -106,7 +122,9 @@ class UserController(AbstractController):
         - role_names: List[str] (optionnel, admin only)
         """
         me = self._get_current_user()
-        self._ensure_admin(me)
+
+        if not Permission.create_permission(me, "user"):
+            raise PermissionError("Accès refusé.")
 
         user = self.users.create_user(data)  # set_password géré dans le CRUD
         return self.serializer.serialize(user)
@@ -120,6 +138,10 @@ class UserController(AbstractController):
         """
         me = self._get_current_user()
         target = self.users.get_by_id(user_id)
+
+        if not Permission.update_permission(me, "user", target_id=user_id):
+            raise PermissionError("Accès refusé.")
+
         if not target:
             raise ValueError("Utilisateur introuvable.")
 
@@ -149,18 +171,23 @@ class UserController(AbstractController):
     # ---------- Delete ----------
     def delete_user(self, user_id: int) -> None:
         me = self._get_current_user()
-        self._ensure_admin(me)
-        if me.id == user_id:
-            raise PermissionError("Vous ne pouvez pas supprimer votre propre compte.")
+
+        if not Permission.delete_permission(me, "user", target_id=user_id):
+            raise PermissionError("Accès refusé.")
 
         ok = self.users.delete_user(user_id)
         if not ok:
             raise ValueError("Utilisateur introuvable.")
 
     # ---------- Roles ----------
-    def add_role(self, user_id: int, role_id: int) -> None:
+    def add_role(
+        self, user_id: int, role_id: int, create_new_user: bool = False
+    ) -> None:
         me = self._get_current_user()
-        self._ensure_admin(me)
+
+        if not create_new_user:
+            if not Permission.create_permission(me, "user_role"):
+                raise PermissionError("Accès refusé.")
 
         role = self.roles.get_by_id(role_id)
         if not role:
@@ -173,7 +200,9 @@ class UserController(AbstractController):
 
     def remove_role(self, user_id: int, role_id: int) -> None:
         me = self._get_current_user()
-        self._ensure_admin(me)
+
+        if not Permission.delete_permission(me, "user_role"):
+            raise PermissionError("Accès refusé.")
 
         role = self.roles.get_by_id(role_id)
         if not role:
@@ -182,26 +211,24 @@ class UserController(AbstractController):
         if not ok:
             raise ValueError("Rôle non associé à l'utilisateur.")
 
-    def replace_roles(self, user_id: int, role_ids: List[int]) -> None:
-        me = self._get_current_user()
-        self._ensure_admin(me)
-
-        roles = [r for r in (self.roles.get_by_id(n) for n in role_ids) if r]
-        if len(roles) != len(role_ids):
-            missing = set(role_ids) - {r.id for r in roles}
-            raise ValueError(
-                f"Rôles introuvables: {', '.join(sorted(map(str, missing)))})"
-            )
-        self.users.replace_user_roles(user_id, [r.id for r in roles])
-
     def get_user_roles(self, user_id: int) -> List[str]:
+        me = self._get_current_user()
         user = self.users.get_by_id(user_id)
+
+        if not Permission.read_permission(me, "user", target_id=user_id):
+            raise PermissionError("Accès refusé.")
+
         if not user:
             raise ValueError("Utilisateur introuvable.")
         return [r.name for r in user.roles]
 
     def has_role(self, user_id: int, role_id: int) -> bool:
+        me = self._get_current_user()
         user = self.users.get_by_id(user_id)
+
+        if not Permission.read_permission(me, "user", target_id=user_id):
+            raise PermissionError("Accès refusé.")
+
         if not user:
             raise ValueError("Utilisateur introuvable.")
         return any(r.id == role_id for r in user.roles)

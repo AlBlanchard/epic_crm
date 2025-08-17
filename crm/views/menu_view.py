@@ -1,19 +1,15 @@
 # views/menu_view.py
 import click
-from typing import Any, Dict, List, Optional
+from typing import Optional
 from rich.console import Console
-from rich.table import Table
-
-from ..database import SessionLocal
 from .auth_view import AuthView
 from .view import BaseView
 from ..controllers.client_controller import ClientController
 from ..controllers.contract_controller import ContractController
 from ..controllers.event_controller import EventController
 from ..controllers.user_controller import UserController
-from ..controllers.role_controller import RoleController
 from ..utils.app_state import AppState
-from .user_view import create_user_cmd, list_users_cmd, update_user_cmd, delete_user_cmd
+from ..utils.cli_utils import CliUtils
 
 
 class MenuView(BaseView):
@@ -41,6 +37,17 @@ class MenuView(BaseView):
         self.event_ctrl = EventController()
         self.user_ctrl = UserController()
         self.app_state = AppState()
+        self.cli_utils = CliUtils()
+
+    @staticmethod
+    def _invoke_cmd_by_name(ctx: click.Context, name: str, **kwargs):
+        root = ctx.find_root()
+        if isinstance(root.command, click.Group):
+            cmd = root.command.get_command(ctx, name)
+            if cmd is None:
+                raise click.ClickException(f"Commande '{name}' introuvable.")
+            return ctx.invoke(cmd, **kwargs)
+        raise click.ClickException("Root command n'est pas un command group.")
 
     def run(self, ctx: click.Context) -> None:
         while True:
@@ -70,7 +77,7 @@ class MenuView(BaseView):
                 elif choice == 4:
                     self._menu_users(ctx)
                 elif choice == 5:
-                    ctx.invoke(self.auth_view.logout_cmd)
+                    self.cli_utils.invoke(ctx, "logout")
                     break
                 else:
                     self.app_state.set_error_message("Choix invalide")
@@ -194,17 +201,57 @@ class MenuView(BaseView):
                 if choice == 0:
                     self.handle_quit()
                 elif choice == 1:
-                    ctx.invoke(create_user_cmd)
+                    self.cli_utils.invoke(ctx, "create-user")
                 elif choice == 2:
-                    ctx.invoke(list_users_cmd)
+                    self.cli_utils.invoke(ctx, "list-users")
                 elif choice == 3:
-                    ctx.invoke(update_user_cmd)
+                    self.cli_utils.invoke(ctx, "update-user")
                 elif choice == 4:
-                    ctx.invoke(delete_user_cmd)
+                    self.cli_utils.invoke(ctx, "delete-user")
                 elif choice == 5:
                     break
                 else:
                     self.console.print("[red]Choix invalide[/red]")
+            except Exception as e:
+                self.app_state.set_error_message(str(e))
+
+    def modify_user_menu(self, user_id: int, username: str, ctx: click.Context) -> None:
+        while True:
+            self._clear_screen()
+            self.console.print(
+                f"\n[bold yellow]-- Modification de l'utilisateur : '{username}' --[/bold yellow]"
+            )
+            self.console.print("1. Modifier les informations")
+            self.console.print("2. Modifier le mot de passe")
+            self.console.print("3. Ajouter un rôle")
+            self.console.print("4. Supprimer un rôle")
+            self.console.print("5. Retour")
+            self.print_quit_option()
+
+            self.app_state.display_error_or_success_message()
+            choice = self.ask_choice()
+
+            try:
+                if choice == 0:
+                    self.handle_quit()
+                elif choice == 1:
+                    self.cli_utils.invoke(ctx, "update-user-infos", user_id=user_id)
+                    break
+                elif choice == 2:
+                    self.cli_utils.invoke(ctx, "update-user-password", user_id=user_id)
+                    break
+                elif choice == 3:
+                    self.cli_utils.invoke(ctx, "add-user-role", user_id=user_id)
+                    break
+                elif choice == 4:
+                    self.cli_utils.invoke(ctx, "remove-user-role", user_id=user_id)
+                    break
+                elif choice == 5:
+                    break
+                else:
+                    self.app_state.set_error_message("Choix invalide")
+                    self.app_state.testprint()
+
             except Exception as e:
                 self.app_state.set_error_message(str(e))
 

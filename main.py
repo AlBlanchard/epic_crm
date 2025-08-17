@@ -3,12 +3,16 @@ from rich.console import Console
 
 from crm.views.auth_view import AuthView
 from crm.views.menu_view import menu_cmd
-from crm.views.user_view import (
+from crm.cli.auth_commands import login_cmd, logout_cmd
+from crm.cli.user_commands import (
     create_user_cmd,
     list_users_cmd,
     update_user_cmd,
     delete_user_cmd,
     update_user_password_cmd,
+    update_user_infos_cmd,
+    add_user_role_cmd,
+    remove_user_role_cmd,
 )
 from crm.utils.app_state import AppState
 
@@ -41,7 +45,7 @@ def cli(ctx: click.Context):
     # Vérifie l'auth sinon
     if not auth_view.ensure_authenticated():
         console.print("[bold yellow]Connexion requise.[/bold yellow]")
-        ctx.invoke(auth_view.login_cmd)
+        ctx.invoke(login_cmd)
 
     # Si aucune sous-commande, on lance le menu principal
     if ctx.invoked_subcommand is None:
@@ -52,25 +56,27 @@ def cli(ctx: click.Context):
 # Auth
 @click.pass_context
 def _bind_auth(ctx: click.Context):
-    # utilitaire si tu veux attacher d’autres vues plus tard
+    # utilitaire pour attacher d’autres vues plus tard
     return ctx
 
 
 # Commandes d'auth (méthodes Click sur l'instance)
-cli.add_command(AuthView.login_cmd)  # accès via: cli login
-cli.add_command(AuthView.logout_cmd)  # accès via: cli logout
+cli.add_command(login_cmd)  # accès via: cli login
+cli.add_command(logout_cmd)  # accès via: cli logout
 
 # Menu principal (fonction Click indépendante)
 cli.add_command(menu_cmd)  # accès via: cli menu
 
-# Exemple : autres commandes réutilisables depuis le menu OU en direct
-# (si tu exposes create_user_cmd comme fonction Click)
-cli.add_command(create_user_cmd)  # accès via: cli create-user
+# Autres commandes réutilisables depuis le menu ou en direct
+cli.add_command(create_user_cmd)
 cli.add_command(list_users_cmd)
 cli.add_command(update_user_cmd)
 cli.add_command(update_user_password_cmd)
 cli.add_command(delete_user_cmd)
-
+cli.add_command(update_user_infos_cmd)
+cli.add_command(update_user_password_cmd)
+cli.add_command(add_user_role_cmd)
+cli.add_command(remove_user_role_cmd)
 
 if __name__ == "__main__":
     cli()
