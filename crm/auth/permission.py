@@ -9,6 +9,14 @@ class Permission:
     """
 
     @staticmethod
+    def role_permissions(user) -> dict[str, set[Crud]]:
+        """Retourne les permissions de chaque rôle de l'utilisateur."""
+        permissions = {}
+        for role in Permission.user_roles_list(user):
+            permissions[role] = ROLE_RULES.get(role, {})
+        return permissions
+
+    @staticmethod
     def user_roles_list(user) -> list[str]:
         if not user or not hasattr(user, "roles"):
             raise ValueError("L'utilisateur doit avoir des rôles définis.")
@@ -118,4 +126,20 @@ class Permission:
             op=Crud.DELETE,
             target_id=target_id,
             owner_id=owner_id,
+        )
+
+    @staticmethod
+    def update_own_permission(user, resource: str) -> bool:
+        return Permission.has_permission(
+            user,
+            resource=resource,
+            op=Crud.UPDATE_OWN,
+        )
+
+    @staticmethod
+    def delete_own_permission(user, resource: str) -> bool:
+        return Permission.has_permission(
+            user,
+            resource=resource,
+            op=Crud.DELETE_OWN,
         )

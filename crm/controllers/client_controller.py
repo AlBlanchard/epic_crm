@@ -96,6 +96,12 @@ class ClientController(AbstractController):
         ser = self.serializer if fields is None else ClientSerializer(fields=fields)
         return ser.serialize_list(matches)
 
+    def get_owner(self, client_id: int) -> User:
+        client = self.clients.get_by_id(client_id)
+        if not client:
+            raise ValueError("Client introuvable.")
+        return self.users.get_by_id(client.sales_contact_id)
+
     # ---------- Create ----------
     def create_client(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """

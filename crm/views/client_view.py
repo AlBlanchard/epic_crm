@@ -12,7 +12,7 @@ class ClientView(BaseView):
         self.app_state = AppState()
 
     @staticmethod
-    def _asdict_user(o: Any) -> Dict[str, Any]:
+    def _asdict_client(o: Any) -> Dict[str, Any]:
         if isinstance(o, dict):
             return o
 
@@ -25,6 +25,37 @@ class ClientView(BaseView):
             "sales_contact_id": getattr(o, "sales_contact_id", ""),
             "created_at": getattr(o, "created_at", ""),
         }
+
+    @staticmethod
+    def attach_sales_name(
+        rows: list[dict], users_name_tuples: list[tuple[int, str]]
+    ) -> list[dict]:
+        """
+        Ajoute à chaque client un champ 'sales_contact' basé sur sales_contact_id
+        en utilisant la liste de tuples (id, username).
+        """
+        id_to_name = {int(uid): uname for uid, uname in users_name_tuples}
+
+        for row in rows:
+            sid = row.get("sales_contact_id")
+            try:
+                sid_int = int(sid) if sid not in (None, "", 0) else None
+            except (ValueError, TypeError):
+                sid_int = None
+
+            if sid_int and sid_int in id_to_name:
+                row["sales_contact"] = id_to_name[sid_int]
+            elif sid_int is None:
+                row["sales_contact"] = "Non assigné"
+            else:
+                row["sales_contact"] = f"#{sid}"  # fallback si id pas trouvé
+
+        for row in rows:
+            for tupple in users_name_tuples:
+                if row["sales_contact_id"] == tupple[0]:
+                    row["sales_contact"] = tupple[1]
+
+        return rows
 
     def create_client_flow(self, sales_contact_id: int):
         try:
@@ -57,24 +88,27 @@ class ClientView(BaseView):
     def list_clients(
         self,
         rows: list[dict],
-        users_name_tuples: list[tuple[int, str]],
+        users_name_id_dict: dict[int, str],
         selector: bool = False,
     ) -> int | None:
         self._clear_screen()
 
-        id_to_name = dict(users_name_tuples)
+        id_to_name = users_name_id_dict
 
-        # Convertit chaque row (client) en dict prêt pour affichage
-        rows = [self._asdict_user(r) for r in rows]
-
-        # Remplace sales_contact_id par le nom
         for row in rows:
-            sales_id = row.get("sales_contact_id")
-            if sales_id is not None:
-                row["sales_contact"] = id_to_name.get(sales_id, f"#{sales_id}")
+            sid = row.get("sales_contact_id")
+            if sid is not None and isinstance(sid, int):
+                row["sales_contact"] = id_to_name.get(sid, f"Inconnu (id={sid})")
+            elif sid is not None:
+                try:
+                    sid_int = int(sid)
+                    row["sales_contact"] = id_to_name.get(
+                        sid_int, f"Inconnu (id={sid_int})"
+                    )
+                except (ValueError, TypeError):
+                    row["sales_contact"] = f"ID invalide ({sid})"
             else:
                 row["sales_contact"] = "Non assigné"
-            row.pop("sales_contact_id", None)  # supprime l'ID
 
         # Affichage
         self._print_table(
@@ -103,3 +137,34 @@ class ClientView(BaseView):
         self.console.print("\n[dim]Appuyez sur Entrée pour revenir au menu...[/dim]")
         self.app_state.display_error_or_success_message()
         self.console.input()
+
+    def update_client_flow(self, client_dict: dict) -> tuple[int, dict] | None:
+        self._clear_screen()
+        try:
+            client_id = client_dict["id"]
+            current_full_name = client_dict["full_name"]
+            current_email = client_dict["email"]
+            current_phone = client_dict["phone"]
+            current_company_name = client_dict["company_name"]
+
+            full_name = self.get_valid_input("Nom complet", default=current_full_name)
+            email = self.get_valid_input("Email", default=current_email)
+            phone = self.get_valid_input("Téléphone", default=current_phone)
+            company_name = self.get_valid_input(
+                "Nom de l'entreprise", default=current_company_name
+            )
+
+            payload: dict = {
+                "full_name": full_name,
+                "email": email,
+                "phone": phone,
+                "company_name": company_name,
+            }
+
+            return client_id, payload
+
+        except Exception as e:
+            if isinstance(e, UserCancelledInput):
+                self.app_state.set_neutral_message("Action annulée par l'utilisateur.")
+            else:
+                self.app_state.set_error_message(str(e))

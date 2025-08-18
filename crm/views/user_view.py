@@ -171,7 +171,12 @@ class UserView(BaseView):
             else:
                 self.app_state.set_error_message(str(e))
 
-    def list_users(self, rows: list[dict], selector: bool = False) -> None:
+    def list_users(
+        self,
+        rows: list[dict],
+        selector: bool = False,
+        prompt: str = "[dim]Sélectionnez un utilisateur...[/dim]",
+    ) -> None:
         self._clear_screen()
         rows = [self._asdict_user(r) for r in rows]
         self._print_table(
@@ -189,7 +194,7 @@ class UserView(BaseView):
 
         if selector:
             validate_number = Validations.validate_number
-            self.console.print("[dim]Sélectionnez un utilisateur...[/dim]")
+            self.console.print(prompt)
             str_user_id = self.get_valid_input(
                 "ID de l'utilisateur",
                 validate=validate_number,
@@ -216,28 +221,19 @@ class UserView(BaseView):
             self.console.print(
                 f"\n[bold]Modification de l'utilisateur #{user_id}[/bold]"
             )
-            username = self.get_valid_input(
-                f"Nouveau nom", default=f"{current_username}"
-            )
-            email = self.get_valid_input(f"Nouvel email", default=f"{current_email}")
+            username = self.get_valid_input(f"Nouveau nom", default=current_username)
+            email = self.get_valid_input(f"Nouvel email", default=current_email)
             employee_number = self.get_valid_input(
                 f"Nouveau numéro d'employé",
-                default=f"{current_employee_number}",
+                default=current_employee_number,
                 transform=lambda s: int(s) if s.strip() else None,
             )
 
-            payload: dict = {}
-            if username:
-                username.strip()
-                payload["username"] = username.strip()
-            if email:
-                email.strip()
-                payload["email"] = email.strip()
-            if isinstance(employee_number, int):
-                payload["employee_number"] = employee_number
-
-            if not payload:
-                raise UserCancelledInput("Aucune modification réalisée.")
+            payload: dict = {
+                "username": username,
+                "email": email,
+                "employee_number": employee_number,
+            }
 
             return user_id, payload
 

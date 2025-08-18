@@ -17,6 +17,7 @@ from crm.cli.user_commands import (
 from crm.cli.client_commands import (
     create_client_cmd,
     list_clients_cmd,
+    update_client_cmd,
 )
 from crm.utils.app_state import AppState
 
@@ -87,6 +88,7 @@ cli.add_command(remove_user_role_cmd)
 # -- Clients--
 cli.add_command(create_client_cmd)
 cli.add_command(list_clients_cmd)
+cli.add_command(update_client_cmd)
 
 if __name__ == "__main__":
     cli()

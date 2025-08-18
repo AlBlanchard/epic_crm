@@ -85,6 +85,29 @@ class UserController(AbstractController):
         )
         return ser.serialize(target)
 
+    def get_all_users_by_role(
+        self,
+        role_name: str,
+        *,
+        order_by: str | None = None,
+        fields: list[str] | None = None,
+        include_roles: bool = True,
+    ) -> list[dict]:
+        me = self._get_current_user()
+        if not Permission.read_permission(me, "user"):
+            raise PermissionError("Accès refusé.")
+
+        rows = self.users.get_all(order_by=order_by)
+        rn = role_name.casefold()
+        rows = [u for u in rows if any(r.name.casefold() == rn for r in u.roles)]
+
+        ser = (
+            self.serializer
+            if (fields is None and include_roles)
+            else UserSerializer(fields=fields, include_roles=include_roles)
+        )
+        return ser.serialize_list(rows)
+
     def me(
         self,
         *,
@@ -114,13 +137,12 @@ class UserController(AbstractController):
             raise ValueError("Utilisateur introuvable.")
         return user.username
 
-    def get_users_name_from_id_list(self, user_ids: List[int]) -> List[Tuple[int, str]]:
+    def get_users_name_from_id_list(self, user_ids: List[int]) -> dict[int, str]:
         """
-        Récupère les noms d'utilisateur à partir d'une liste d'IDs.
-        Renvoie une liste de tuples (id, username).
+        Récupère un mapping {id: username} pour une liste d'IDs.
         """
         users = self.users.get_by_ids(user_ids)
-        return [(u.id, u.username) for u in users]
+        return {u.id: u.username for u in users}
 
     # ---------- Create ----------
     def create_user(self, data: Dict[str, Any]) -> Dict[str, Any]:
