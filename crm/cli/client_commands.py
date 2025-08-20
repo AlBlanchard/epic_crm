@@ -119,6 +119,7 @@ def update_client_cmd(ctx: click.Context, client_id: int) -> None:
 
     client_id, payload = result
 
+    # Pour changer de contact commercial, seul l'admin y a accès
     if Permission.is_admin(me):
         user_view: UserView = (
             ctx.obj.get("user_view")
@@ -138,5 +139,44 @@ def update_client_cmd(ctx: click.Context, client_id: int) -> None:
     try:
         ctrl.update_client(client_id, payload)
         view.app_state.set_success_message("Le client a été mis à jour avec succès.")
+    except Exception as e:
+        view.app_state.set_error_message(str(e))
+
+
+@click.command(name="delete-client")
+@click.option("--id", "client_id", type=int, help="ID du client à supprimer")
+@click.pass_context
+def delete_client_cmd(ctx: click.Context, client_id: int) -> None:
+    view: ClientView = (
+        ctx.obj.get("client_view")
+        if ctx and ctx.obj and "client_view" in ctx.obj
+        else ClientView()
+    )
+
+    ctrl: ClientController = ctx.obj.get("client_controller") or ClientController(
+        session=SessionLocal()
+    )
+
+    user_ctrl: UserController = ctx.obj.get("user_controller") or UserController(
+        session=SessionLocal()
+    )
+
+    me = ctrl._get_current_user()
+
+    if not Permission.is_admin(me):
+        raise PermissionError("Accès refusé.")
+
+    if not client_id:
+        rows = ctrl.list_clients()
+        id_list = [r["sales_contact_id"] for r in rows]
+        user_name_dict = user_ctrl.get_users_name_from_id_list(id_list)
+        selected_id = view.list_clients(rows, user_name_dict, selector=True)
+        if selected_id is None:
+            return
+        client_id = selected_id
+
+    try:
+        ctrl.delete_client(client_id)
+        view.app_state.set_success_message("Le client a été supprimé avec succès.")
     except Exception as e:
         view.app_state.set_error_message(str(e))

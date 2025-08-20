@@ -13,10 +13,16 @@ class UserRole(Base):
     __tablename__ = "user_roles"
 
     user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), primary_key=True
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True,
+        nullable=False,
     )
     role_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("roles.id"), primary_key=True
+        Integer,
+        ForeignKey("roles.id", ondelete="CASCADE"),
+        primary_key=True,
+        nullable=False,
     )
 
     user = relationship("User", back_populates="user_roles")

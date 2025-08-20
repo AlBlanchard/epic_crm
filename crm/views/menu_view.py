@@ -119,7 +119,7 @@ class MenuView(BaseView):
             except Exception as e:
                 self.app_state.set_error_message(str(e))
 
-    def _menu_contracts(self) -> None:
+    def _menu_contracts(self, ctx: click.Context) -> None:
         while True:
             self._clear_screen()
             self.console.print("\n[bold cyan]— Contrats —[/bold cyan]")
@@ -137,13 +137,13 @@ class MenuView(BaseView):
                 if choice == 0:
                     self.handle_quit()
                 elif choice == 1:
-                    self.contracts_view.create_contract()
+                    self.cli_utils.invoke(ctx, "create-contract")
                 elif choice == 2:
-                    self.contracts_view.list_contracts()
+                    self.cli_utils.invoke(ctx, "list-contracts")
                 elif choice == 3:
-                    self.contracts_view.update_contract()
+                    self.cli_utils.invoke(ctx, "update-contract")
                 elif choice == 4:
-                    self.contracts_view.delete_contract()
+                    self.cli_utils.invoke(ctx, "delete-contract")
                 elif choice == 5:
                     break
                 else:

@@ -16,7 +16,7 @@ class Client(AbstractBase):
 
     # Many Client to One User
     sales_contact_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=False
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
 
     sales_contact = relationship("User", back_populates="clients")

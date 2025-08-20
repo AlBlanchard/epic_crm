@@ -20,10 +20,10 @@ class Event(AbstractBase):
     )
 
     contract_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("contracts.id"), nullable=False
+        Integer, ForeignKey("contracts.id", ondelete="CASCADE"), nullable=False
     )
     support_contact_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=True
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
 
     date_start: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False)

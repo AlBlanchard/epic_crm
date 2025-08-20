@@ -20,10 +20,7 @@ class Contract(AbstractBase):
     )
 
     client_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("clients.id"), nullable=False
-    )
-    sales_contact_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=False
+        Integer, ForeignKey("clients.id", ondelete="CASCADE"), nullable=False
     )
 
     amount_total: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
@@ -31,7 +28,6 @@ class Contract(AbstractBase):
     is_signed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     client = relationship("Client", back_populates="contracts")
-    sales_contact = relationship("User", back_populates="contracts")
     event = relationship("Event", back_populates="contract", uselist=False)
 
     def __repr__(self) -> str:

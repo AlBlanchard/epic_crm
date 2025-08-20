@@ -7,6 +7,12 @@ from rich.console import Console
 console = Console()
 
 
+@click.group(name="auth-cli")
+def auth_cli():
+    """Commandes d'authentification."""
+    pass
+
+
 @click.command(name="login")
 def login_cmd():
     """

@@ -32,7 +32,6 @@ class User(AbstractBase):
     )
 
     clients = relationship("Client", back_populates="sales_contact")
-    contracts = relationship("Contract", back_populates="sales_contact")
     events = relationship("Event", back_populates="support_contact")
 
     @property
