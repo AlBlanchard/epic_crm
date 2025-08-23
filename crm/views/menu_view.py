@@ -125,9 +125,10 @@ class MenuView(BaseView):
             self.console.print("\n[bold cyan]— Contrats —[/bold cyan]")
             self.console.print("1. Créer un contrat")
             self.console.print("2. Lister les contrats")
-            self.console.print("3. Modifier un contrat")
-            self.console.print("4. Supprimer un contrat")
-            self.console.print("5. [yellow]Retour[/yellow]")
+            self.console.print("3. Signer un contrat")
+            self.console.print("4. Enregistrer un paiement")
+            self.console.print("5. Supprimer un contrat")
+            self.console.print("6. [yellow]Retour[/yellow]")
             self.print_quit_option()
 
             self.app_state.display_error_or_success_message()
@@ -141,25 +142,29 @@ class MenuView(BaseView):
                 elif choice == 2:
                     self.cli_utils.invoke(ctx, "list-contracts")
                 elif choice == 3:
-                    self.cli_utils.invoke(ctx, "update-contract")
+                    self.cli_utils.invoke(ctx, "sign-contract")
                 elif choice == 4:
-                    self.cli_utils.invoke(ctx, "delete-contract")
+                    self.cli_utils.invoke(ctx, "update-contract-amount")
                 elif choice == 5:
+                    self.cli_utils.invoke(ctx, "delete-contract")
+                elif choice == 6:
                     break
                 else:
                     self.console.print("[red]Choix invalide[/red]")
             except Exception as e:
                 self.app_state.set_error_message(str(e))
 
-    def _menu_events(self) -> None:
+    def _menu_events(self, ctx: click.Context) -> None:
         while True:
             self._clear_screen()
             self.console.print("\n[bold cyan]— Evénements —[/bold cyan]")
             self.console.print("1. Créer un événement")
             self.console.print("2. Lister les événements")
             self.console.print("3. Modifier un événement")
-            self.console.print("4. Supprimer un événement")
-            self.console.print("5. [yellow]Retour[/yellow]")
+            self.console.print("4. Ajouter des notes")
+            self.console.print("5. Ajouter/Modifier le support")
+            self.console.print("6. Supprimer un événement")
+            self.console.print("7. [yellow]Retour[/yellow]")
             self.print_quit_option()
 
             self.app_state.display_error_or_success_message()
@@ -169,14 +174,18 @@ class MenuView(BaseView):
                 if choice == 0:
                     self.handle_quit()
                 elif choice == 1:
-                    self.events_view.create_event()
+                    self.cli_utils.invoke(ctx, "create-event")
                 elif choice == 2:
-                    self.events_view.list_events()
+                    self.cli_utils.invoke(ctx, "list-events")
                 elif choice == 3:
-                    self.events_view.update_event()
+                    self.cli_utils.invoke(ctx, "update-event")
                 elif choice == 4:
-                    self.events_view.delete_event()
+                    self.cli_utils.invoke(ctx, "add-event-notes")
                 elif choice == 5:
+                    self.cli_utils.invoke(ctx, "update-event-support")
+                elif choice == 6:
+                    self.cli_utils.invoke(ctx, "delete-event")
+                elif choice == 7:
                     break
                 else:
                     self.console.print("[red]Choix invalide[/red]")

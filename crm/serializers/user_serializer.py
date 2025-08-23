@@ -13,6 +13,7 @@ class UserSerializer:
         "email",
         "created_at",
         "updated_at",
+        "roles",
     }
 
     def __init__(
@@ -21,9 +22,9 @@ class UserSerializer:
         """
         Args:
             fields: Liste des champs à exposer (défaut: PUBLIC_USER_FIELDS)
-            include_roles: Inclure ou non les rôles dans la sortie
+            include_roles: Inclure la clé 'roles' (liste de noms) si True
         """
-        self.fields = set(fields) if fields else self.PUBLIC_USER_FIELDS
+        self.fields = set(fields) if fields else set(self.PUBLIC_USER_FIELDS)
         self.include_roles = include_roles
 
     @staticmethod
@@ -31,34 +32,42 @@ class UserSerializer:
         """Convertit datetime/date en ISO 8601 si applicable."""
         return value.isoformat() if hasattr(value, "isoformat") else value
 
+    @staticmethod
+    def _extract_roles_from_user_roles(user: "User") -> List[str]:
+        """Récupère les noms des rôles via la relation user.user_roles -> role."""
+        names: List[str] = []
+        user_roles = getattr(user, "user_roles", None)
+        if user_roles:
+            for ur in user_roles:
+                role = getattr(ur, "role", None)
+                if role is not None:
+                    names.append(getattr(role, "name", str(role)))
+        return names
+
     def serialize(
         self, user: User, extra: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
-        """
-        Sérialise un utilisateur.
-        Args:
-            user: instance User SQLAlchemy
-            extra: dict fusionné au résultat (ex: infos calculées)
-        """
         if user is None:
             return {}
 
         data: Dict[str, Any] = {}
+
+        # Colonnes SQL whitelistees
         for col in user.__table__.columns:
             name = col.name
-            if name == "password_hash":
+            if name in {"password", "password_hash"}:
                 continue
             if name in self.fields:
                 data[name] = self._to_iso(getattr(user, name))
 
-        if self.include_roles:
-            data["roles"] = [r.name for r in getattr(user, "roles", [])]
+        # Champ calculé roles (via user_roles/role)
+        if self.include_roles and "roles" in self.fields:
+            data["roles"] = self._extract_roles_from_user_roles(user)
 
         if extra:
             data.update(extra)
 
         return data
 
-    def serialize_list(self, users: List[User]) -> List[Dict[str, Any]]:
-        """Sérialise une liste d'utilisateurs."""
-        return [self.serialize(u) for u in users]
+    def serialize_list(self, users: List["User"]) -> List[Dict[str, Any]]:
+        return [self.serialize(u) for u in users if u is not None]

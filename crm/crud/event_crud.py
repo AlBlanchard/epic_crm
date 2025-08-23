@@ -3,7 +3,10 @@ from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from ..models.event import Event
+from ..models.contract import Contract
+from ..models.client import Client
 from datetime import datetime
+from sqlalchemy.orm import Session, selectinload
 
 
 class EventCRUD(AbstractBaseCRUD):
@@ -30,10 +33,29 @@ class EventCRUD(AbstractBaseCRUD):
 
     # ---------- READ ----------
     def get_all(
-        self, filters: Optional[Dict[str, Any]] = None, order_by: Optional[str] = None
+        self,
+        filters: Optional[Dict[str, Any]] = None,
+        order_by: Optional[str] = None,
+        *,
+        limit: Optional[int] = None,
+        offset: int = 0,
     ) -> List[Event]:
-        """Récupère tous les événements avec filtres optionnels."""
-        return self.get_entities(Event, filters=filters, order_by=order_by)
+        """Récupère tous les contrats avec filtres/tri et eager-load anti-N+1."""
+        return self.get_entities(
+            Event,
+            filters=filters,
+            order_by=order_by,
+            limit=limit,
+            offset=offset,
+            eager_options=(
+                selectinload(Event.notes),
+                selectinload(Event.support_contact),
+                # N+3
+                selectinload(Event.contract)
+                .selectinload(Contract.client)
+                .selectinload(Client.sales_contact),
+            ),
+        )
 
     def get_by_id(self, event_id: int) -> Optional[Event]:
         """Récupère un événement par son ID."""

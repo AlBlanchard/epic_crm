@@ -5,6 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from ..models.client import Client
 from ..models.user import User
 from ..models.contract import Contract
+from sqlalchemy.orm import selectinload
 
 
 class ClientCRUD(AbstractBaseCRUD):
@@ -35,10 +36,22 @@ class ClientCRUD(AbstractBaseCRUD):
 
     # ---------- READ ----------
     def get_all(
-        self, filters: Optional[Dict[str, Any]] = None, order_by: Optional[str] = None
+        self,
+        filters: Optional[Dict[str, Any]] = None,
+        order_by: Optional[str] = None,
+        *,
+        limit: Optional[int] = None,
+        offset: int = 0,
     ) -> List[Client]:
-        """Récupère tous les clients avec filtres et tri optionnels."""
-        return self.get_entities(Client, filters=filters, order_by=order_by)
+        """Récupère tous les clients avec filtres et tri optionnels, anti-N+1 activé."""
+        return self.get_entities(
+            Client,
+            filters=filters,
+            order_by=order_by,
+            eager_options=(selectinload(Client.sales_contact),),  # clé anti N+1
+            limit=limit,
+            offset=offset,
+        )
 
     def get_by_id(self, client_id: int) -> Optional[Client]:
         """Récupère un client par son ID."""

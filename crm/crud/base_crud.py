@@ -1,5 +1,5 @@
-from typing import Optional, Type, Dict, Callable, List
-from sqlalchemy.orm import Session
+from typing import Any, Optional, Type, Dict, Callable, List, Sequence
+from sqlalchemy.orm import Session, Query
 from abc import ABC
 
 
@@ -11,39 +11,48 @@ class AbstractBaseCRUD(ABC):
 
     def get_entities(
         self,
-        model: Type,
+        model,  # classe SQLAlchemy (Client, Contract, etc.)
         owner_field: Optional[str] = None,
         owner_id: Optional[int] = None,
-        filters: Optional[Dict] = None,
+        filters: Optional[Dict[str, Any]] = None,
         order_by: Optional[str] = None,
+        *,
+        eager_options: Sequence = (),  # ex. (selectinload(Client.sales_contact),)
+        limit: Optional[int] = None,
+        offset: int = 0,
     ) -> List:
-        """
-        Récupère des entités avec filtres facultatifs.
+        """Récupère des entités avec filtres/tri simples + eager-load optionnel."""
+        query: Query = self.session.query(model)
 
-        Args:
-            model (Type): La classe SQLAlchemy (Client, Contract, etc.)
-            owner_field (str, optional): Le champ représentant le propriétaire (ex: "sales_contact_id")
-            owner_id (int, optional): L'ID du propriétaire pour filtrer (à passer depuis le controller)
-            filters (dict, optional): Autres filtres {champ: valeur}
-            order_by (str, optional): Champ de tri
+        # Eager load (anti-N+1), si fourni
+        if eager_options:
+            query = query.options(*eager_options)
 
-        Returns:
-            list: Liste des objets correspondant aux critères.
-        """
-        query = self.session.query(model)
+        # Whitelist des colonnes disponibles (noms)
+        columns = {c.name for c in model.__table__.columns}
 
-        # Filtrage par propriétaire
-        if owner_field and owner_id is not None:
+        # Filtre "propriétaire"
+        if owner_field and owner_id is not None and owner_field in columns:
             query = query.filter(getattr(model, owner_field) == owner_id)
 
-        # Autres filtres
+        # Autres filtres (égalité simple)
         if filters:
             for field, value in filters.items():
-                if hasattr(model, field):
+                if field in columns:
                     query = query.filter(getattr(model, field) == value)
 
-        # Tri
-        if order_by and hasattr(model, order_by):
-            query = query.order_by(getattr(model, order_by))
+        # Tri: "field" (asc) ou "-field" (desc)
+        if order_by:
+            desc = order_by.startswith("-")
+            key = order_by[1:] if desc else order_by
+            if key in columns:
+                col = getattr(model, key)
+                query = query.order_by(col.desc() if desc else col.asc())
+
+        # Pagination (facultatif)
+        if offset:
+            query = query.offset(offset)
+        if limit:
+            query = query.limit(limit)
 
         return query.all()

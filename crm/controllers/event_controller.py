@@ -8,6 +8,7 @@ from ..crud.contract_crud import ContractCRUD
 from ..crud.user_crud import UserCRUD
 from ..serializers.event_serializer import EventSerializer
 from ..models.user import User
+from ..utils.validations import Validations
 
 
 class EventController(AbstractController):
@@ -115,37 +116,18 @@ class EventController(AbstractController):
 
     # ---------- Create ----------
     def create_event(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Attendu: contract_id, date_start, date_end, location?, attendees?, notes?
-        Règles :
-          - support : on force support_contact_id = me.id
-          - admin : peut définir support_contact_id (sinon me.id par défaut)
-          - contract_id doit exister (option : imposer contrat signé)
-        """
         me = self._get_current_user()
+        if not Permission.create_permission(me, "event"):
+            raise PermissionError("Accès refusé.")
 
-        # dates
-        start = data.get("date_start")
-        end = data.get("date_end")
-        if start is None or end is None:
-            raise ValueError("date_start et date_end sont requis.")
-        self._validate_dates(start, end)
+        date_start = data.get("date_start")
+        if not isinstance(date_start, datetime):
+            raise ValueError("date_start must be a datetime object")
+        Validations.validate_future_datetime(date_start)
 
-        # contrat
-        contract_id = data.get("contract_id")
-        if contract_id is None:
-            raise ValueError("contract_id requis.")
-        if not self.contracts.get_by_id(int(contract_id)):
-            raise ValueError("Contrat introuvable.")
-
-        # propriétaire
-        support_contact_id = data.get("support_contact_id", me.id)
-        if not Permission.is_admin(me) and support_contact_id != me.id:
-            raise PermissionError("Assignation à un autre technicien interdite.")
-
-        payload = {**data, "support_contact_id": support_contact_id}
-        ev = self.events.create(payload)
-        return self.serializer.serialize(ev)
+        payload = {**data}
+        event = self.events.create(payload)
+        return self.serializer.serialize(event)
 
     # ---------- Update ----------
     def update_event(self, event_id: int, data: Dict[str, Any]) -> Dict[str, Any]:

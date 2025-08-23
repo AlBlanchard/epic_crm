@@ -30,6 +30,18 @@ class Contract(AbstractBase):
     client = relationship("Client", back_populates="contracts")
     event = relationship("Event", back_populates="contract", uselist=False)
 
+    @property
+    def client_name(self):
+        return self.client.full_name
+
+    @property
+    def sales_contact_name(self):
+        return (
+            self.client.sales_contact.username
+            if self.client.sales_contact
+            else "Aucun contact"
+        )
+
     def __repr__(self) -> str:
         return f"<Contract(id={self.id}, total={self.amount_total}, signed={self.is_signed})>"
 

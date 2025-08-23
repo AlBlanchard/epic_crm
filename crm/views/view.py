@@ -2,6 +2,7 @@ import sys
 import click
 import platform
 import os
+import calendar
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Iterable, List, Optional, Callable, TypeVar
 from sqlalchemy.orm import Session
@@ -12,6 +13,7 @@ from ..errors.exceptions import UserCancelledInput
 from ..utils.app_state import AppState
 from ..utils.validations import Validations
 from getpass import getpass
+from datetime import datetime
 
 
 # Type variable pour des types génériques
@@ -187,3 +189,31 @@ class BaseView(ABC):
         self.console.print(farewell)
         self.session.close()
         sys.exit(0)
+
+    @staticmethod
+    def get_date_input(title: str = "Saisir une date") -> datetime:
+        """Demande jour, mois, année, heure, minute et renvoie (datetime, string)."""
+        click.echo(title)
+
+        # Entrées simples (validators à part)
+        year = BaseView.get_valid_input(
+            "Année (ex: 2025)", transform=int, validate=Validations.validate_year
+        )
+        month = BaseView.get_valid_input(
+            "Mois (1-12)", transform=int, validate=Validations.validate_month
+        )
+        day = BaseView.get_valid_input(
+            "Jour (1-31)",
+            transform=int,
+            validate=lambda x: Validations.validate_day_in_month(x, month, year),
+        )
+        hour = BaseView.get_valid_input(
+            "Heure (0-23)", transform=int, validate=Validations.validate_hour
+        )
+        minute = BaseView.get_valid_input(
+            "Minute (0-59)", transform=int, validate=Validations.validate_minute
+        )
+
+        dt = datetime(year, month, day, hour, minute)
+
+        return dt

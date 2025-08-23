@@ -4,6 +4,10 @@ from sqlalchemy import inspect
 from crm.database import Base, engine, SessionLocal
 from ..models.role import Role
 from ..models.user import User
+from ..models.client import Client  # Import nécessaire pour la création des tables
+from ..models.contract import Contract  # Import nécessaire pour la création des tables
+from ..models.event import Event  # Import nécessaire pour la création des tables
+from sqlalchemy import text
 
 
 @click.group(name="db-cli")
@@ -39,7 +43,7 @@ def _create_initial_data():
         try:
             # Création des rôles de base
             roles = {}
-            for role_name in ["admin", "sales", "support"]:
+            for role_name in ["admin", "management", "sales", "support"]:
                 role = Role(name=role_name)
                 session.add(role)
                 roles[role_name] = role
@@ -101,3 +105,16 @@ def reset_db():
     Base.metadata.drop_all(bind=engine)
 
     _create_initial_data()
+
+
+@db_cli.command("reset-hard")
+@click.confirmation_option(
+    prompt="Détruire le schéma public (DROP SCHEMA public CASCADE) puis le recréer ?"
+)
+def reset_hard():
+    with engine.begin() as conn:
+        conn.execute(text("DROP SCHEMA public CASCADE"))
+        conn.execute(text("CREATE SCHEMA public"))
+    Base.metadata.create_all(bind=engine)
+    _create_initial_data()
+    click.secho("Reset hard terminé", fg="green")

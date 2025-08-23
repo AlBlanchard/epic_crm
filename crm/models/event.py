@@ -30,10 +30,18 @@ class Event(AbstractBase):
     date_end: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False)
     location: Mapped[str] = mapped_column(String(255))
     attendees: Mapped[int] = mapped_column(Integer)
-    notes: Mapped[str] = mapped_column(String(1024))
 
+    notes = relationship(
+        "EventNote", back_populates="event", cascade="all, delete-orphan"
+    )
     contract = relationship("Contract", back_populates="event")
     support_contact = relationship("User", back_populates="events")
+
+    @property
+    def support_contact_name(self):
+        return (
+            self.support_contact.username if self.support_contact else "Aucun contact"
+        )
 
     def __repr__(self) -> str:
         return f"<Event(id={self.id}, location='{self.location}', attendees={self.attendees})>"
@@ -65,3 +73,17 @@ class Event(AbstractBase):
             raise ValueError(f"{key} cannot be negative or zero")
 
         return value
+
+
+class EventNote(AbstractBase):
+    __tablename__ = "event_notes"
+
+    event_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=False
+    )
+    note: Mapped[str] = mapped_column(String(2048), nullable=False)
+
+    event = relationship("Event", back_populates="notes")
+
+    def __repr__(self) -> str:
+        return f"<EventNote(id={self.id}, event_id={self.event_id})>"

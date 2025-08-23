@@ -22,6 +22,10 @@ class Client(AbstractBase):
     sales_contact = relationship("User", back_populates="clients")
     contracts = relationship("Contract", back_populates="client")
 
+    @property
+    def sales_contact_name(self):
+        return self.sales_contact.username if self.sales_contact else "Aucun contact"
+
     def __repr__(self) -> str:
         return f"<Client(id={self.id}, name='{self.full_name}')>"
 

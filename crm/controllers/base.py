@@ -3,6 +3,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from ..database import SessionLocal
+from datetime import datetime
 
 
 class AbstractController(ABC):
@@ -28,3 +29,13 @@ class AbstractController(ABC):
     def __exit__(self, exc_type, exc, tb):
         if self._owns_session and self.session:
             self.session.close()
+
+    def ensure_datetime(self, value):
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            try:
+                return datetime.fromisoformat(value)
+            except ValueError:
+                raise ValueError(f"Impossible de convertir {value!r} en datetime")
+        raise ValueError(f"Type non supporté: {type(value)}")

@@ -1,10 +1,11 @@
-from .base_crud import AbstractBaseCRUD  # Import relatif corrigé
+from .base_crud import AbstractBaseCRUD
 from typing import Optional, List, Dict, Any
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.exc import IntegrityError
 from ..models.user import User
 from ..models.role import Role
 from ..models.user_role import UserRole
+
 
 ALLOWED_CREATE_FIELDS = {"username", "email", "employee_number"}
 ALLOWED_UPDATE_FIELDS = {"username", "email", "employee_number"}
@@ -47,10 +48,25 @@ class UserCRUD(AbstractBaseCRUD):
 
     # ---------- READ ----------
     def get_all(
-        self, filters: Optional[Dict[str, Any]] = None, order_by: Optional[str] = None
+        self,
+        filters: Optional[Dict[str, Any]] = None,
+        order_by: Optional[str] = None,
+        *,
+        limit: Optional[int] = None,
+        offset: int = 0,
     ) -> List[User]:
         """Récupère tous les utilisateurs avec filtres et tri optionnels."""
-        return self.get_entities(User, filters=filters, order_by=order_by)
+        return self.get_entities(
+            User,
+            filters=filters,
+            order_by=order_by,
+            limit=limit,
+            offset=offset,
+            eager_options=(
+                # anti N+2
+                selectinload(User.user_roles).selectinload(UserRole.role),
+            ),
+        )
 
     def get_by_id(self, user_id: int) -> Optional[User]:
         """Récupère un utilisateur par son ID."""

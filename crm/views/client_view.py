@@ -89,29 +89,10 @@ class ClientView(BaseView):
     def list_clients(
         self,
         rows: list[dict],
-        users_name_id_dict: dict[int, str],
         selector: bool = False,
     ) -> int | None:
         self._clear_screen()
 
-        id_to_name = users_name_id_dict
-
-        for row in rows:
-            sid = row.get("sales_contact_id")
-            if sid is not None and isinstance(sid, int):
-                row["sales_contact"] = id_to_name.get(sid, f"Inconnu (id={sid})")
-            elif sid is not None:
-                try:
-                    sid_int = int(sid)
-                    row["sales_contact"] = id_to_name.get(
-                        sid_int, f"Inconnu (id={sid_int})"
-                    )
-                except (ValueError, TypeError):
-                    row["sales_contact"] = f"ID invalide ({sid})"
-            else:
-                row["sales_contact"] = "Non assigné"
-
-        # Affichage
         self._print_table(
             "[cyan]Clients[/cyan]",
             [
@@ -120,7 +101,7 @@ class ClientView(BaseView):
                 "email",
                 "phone",
                 "company_name",
-                "sales_contact",
+                "sales_contact_name",
             ],
             rows,
         )

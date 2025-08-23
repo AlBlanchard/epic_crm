@@ -1,8 +1,9 @@
 from .base_crud import AbstractBaseCRUD
 from typing import Optional, List, Dict, Any
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.exc import IntegrityError
 from ..models.contract import Contract
+from ..models.client import Client
 
 
 class ContractCRUD(AbstractBaseCRUD):
@@ -29,10 +30,27 @@ class ContractCRUD(AbstractBaseCRUD):
 
     # ---------- READ ----------
     def get_all(
-        self, filters: Optional[Dict[str, Any]] = None, order_by: Optional[str] = None
+        self,
+        filters: Optional[Dict[str, Any]] = None,
+        order_by: Optional[str] = None,
+        *,
+        limit: Optional[int] = None,
+        offset: int = 0,
     ) -> List[Contract]:
-        """Récupère tous les contrats avec filtres optionnels."""
-        return self.get_entities(Contract, filters=filters, order_by=order_by)
+        """Récupère tous les contrats avec filtres/tri et eager-load anti-N+1."""
+        return self.get_entities(
+            Contract,
+            filters=filters,
+            order_by=order_by,
+            limit=limit,
+            offset=offset,
+            eager_options=(
+                # N+1
+                selectinload(Contract.client),
+                # N+2
+                selectinload(Contract.client).selectinload(Client.sales_contact),
+            ),
+        )
 
     def get_by_id(self, contract_id: int) -> Optional[Contract]:
         """Récupère un contrat par son ID."""
@@ -43,12 +61,32 @@ class ContractCRUD(AbstractBaseCRUD):
         return self.session.query(Contract).filter_by(client_id=client_id).all()
 
     def get_by_sales_contact(self, sales_contact_id: int) -> List[Contract]:
-        """Récupère les contrats d'un commercial."""
+        """Récupère tous les contrats liés à un commercial donné."""
         return (
             self.session.query(Contract)
-            .filter_by(sales_contact_id=sales_contact_id)
+            .options(selectinload(Contract.client).selectinload(Client.sales_contact))
+            .filter(Contract.sales_contact_id == sales_contact_id)
             .all()
         )
+
+    def get_unsigned_contracts(
+        self, *, sales_contact_id: Optional[int] = None, **kw
+    ) -> List[Contract]:
+        filters = {}
+        if hasattr(Contract, "is_signed"):
+            filters["is_signed"] = False
+
+        eager = (selectinload(Contract.client).selectinload(Client.sales_contact),)
+
+        # Filtre par commercial
+        if sales_contact_id is not None:
+            if hasattr(Contract, "sales_contact_id"):
+                filters["sales_contact_id"] = sales_contact_id
+            else:
+                # Dans ce cas précis (via Client), garde la première version Query.
+                pass
+
+        return self.get_all(filters=filters, **kw)
 
     # ---------- UPDATE ----------
     def update(self, contract_id: int, contract_data: Dict) -> Optional[Contract]:

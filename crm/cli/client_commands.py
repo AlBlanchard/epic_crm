@@ -34,10 +34,8 @@ def create_client_cmd(ctx: click.Context) -> None:
     if result is None:
         return
 
-    data = result
-
     try:
-        ctrl.create_client(data)
+        ctrl.create_client(result)
         view.app_state.set_success_message("Le client a été créé avec succès.")
     except Exception as e:
         if view.app_state:
@@ -57,14 +55,8 @@ def list_clients_cmd(ctx: click.Context) -> None:
         session=SessionLocal()
     )
 
-    user_ctrl: UserController = ctx.obj.get("user_controller") or UserController(
-        session=SessionLocal()
-    )
-
     rows = ctrl.list_clients()
-    id_list = [r["sales_contact_id"] for r in rows]
-    user_name_dict = user_ctrl.get_users_name_from_id_list(id_list)
-    view.list_clients(rows, user_name_dict, selector=False)
+    view.list_clients(rows)
 
 
 @click.command(name="update-client")
@@ -99,9 +91,7 @@ def update_client_cmd(ctx: click.Context, client_id: int) -> None:
             raise PermissionError("Accès refusé.")
 
         # Liste pour selectionner le client à modifier
-        id_list = [r["sales_contact_id"] for r in rows]
-        user_name_dict = user_ctrl.get_users_name_from_id_list(id_list)
-        selected_id = view.list_clients(rows, user_name_dict, selector=True)
+        selected_id = view.list_clients(rows, selector=True)
         if selected_id is None:
             return
         client_id = selected_id
@@ -157,10 +147,6 @@ def delete_client_cmd(ctx: click.Context, client_id: int) -> None:
         session=SessionLocal()
     )
 
-    user_ctrl: UserController = ctx.obj.get("user_controller") or UserController(
-        session=SessionLocal()
-    )
-
     me = ctrl._get_current_user()
 
     if not Permission.is_admin(me):
@@ -168,9 +154,7 @@ def delete_client_cmd(ctx: click.Context, client_id: int) -> None:
 
     if not client_id:
         rows = ctrl.list_clients()
-        id_list = [r["sales_contact_id"] for r in rows]
-        user_name_dict = user_ctrl.get_users_name_from_id_list(id_list)
-        selected_id = view.list_clients(rows, user_name_dict, selector=True)
+        selected_id = view.list_clients(rows, selector=True)
         if selected_id is None:
             return
         client_id = selected_id

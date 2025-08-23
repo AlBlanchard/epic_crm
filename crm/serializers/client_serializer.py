@@ -14,8 +14,20 @@ class ClientSerializer:
         "updated_at",
     }
 
+    # Tous les champs calculés
+    COMPUTED_FIELDS = {
+        "sales_contact_name": lambda c: (
+            c.sales_contact_name if c.sales_contact else "Aucun contact"
+        ),
+    }
+
     def __init__(self, *, fields: Optional[Iterable[str]] = None):
-        self.fields = set(fields) if fields else set(self.PUBLIC_FIELDS)
+        if fields is None:
+            self.fields = set(self.PUBLIC_FIELDS) | set(
+                self.COMPUTED_FIELDS.keys()
+            )  # Initialise les deux fields
+        else:
+            self.fields = set(fields)
 
     @staticmethod
     def _to_iso(v: Any) -> Any:
@@ -27,10 +39,18 @@ class ClientSerializer:
         if client is None:
             return {}
         data: Dict[str, Any] = {}
+
+        # Colonnes SQL
         for col in client.__table__.columns:
             name = col.name
             if name in self.fields:
                 data[name] = self._to_iso(getattr(client, name))
+
+        # Champs calculés
+        for name, getter in self.COMPUTED_FIELDS.items():
+            if name in self.fields:
+                data[name] = self._to_iso(getter(client))
+
         if extra:
             data.update(extra)
         return data

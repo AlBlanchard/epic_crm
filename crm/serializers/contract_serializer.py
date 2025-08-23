@@ -6,7 +6,6 @@ class ContractSerializer:
     PUBLIC_FIELDS = {
         "id",
         "client_id",
-        "sales_contact_id",
         "amount_total",
         "amount_due",
         "is_signed",
@@ -14,8 +13,20 @@ class ContractSerializer:
         "updated_at",
     }
 
+    COMPUTED_FIELDS = {
+        "sales_contact_name": lambda c: (
+            c.sales_contact_name if c.sales_contact_name else "Aucun contact"
+        ),
+        "client_name": lambda c: c.client_name,
+    }
+
     def __init__(self, *, fields: Optional[Iterable[str]] = None):
-        self.fields = set(fields) if fields else set(self.PUBLIC_FIELDS)
+        if fields is None:
+            self.fields = set(self.PUBLIC_FIELDS) | set(
+                self.COMPUTED_FIELDS.keys()
+            )  # Initialise les deux fields
+        else:
+            self.fields = set(fields)
 
     @staticmethod
     def _to_iso(v: Any) -> Any:
@@ -27,10 +38,18 @@ class ContractSerializer:
         if contract is None:
             return {}
         data: Dict[str, Any] = {}
+
+        # Colonnes SQL
         for col in contract.__table__.columns:
             name = col.name
             if name in self.fields:
                 data[name] = self._to_iso(getattr(contract, name))
+
+        # Champs calculés
+        for name, getter in self.COMPUTED_FIELDS.items():
+            if name in self.fields:
+                data[name] = self._to_iso(getter(contract))
+
         if extra:
             data.update(extra)
         return data
