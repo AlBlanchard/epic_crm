@@ -44,6 +44,7 @@ class MenuView(BaseView):
         ctx: click.Context,
         title: str,
         items: list[tuple[str, Callable]],  # [(label, action), ...]
+        logout: bool = False,
     ) -> None:
         """
         Affiche un menu et exécute les actions correspondantes.
@@ -59,18 +60,21 @@ class MenuView(BaseView):
                 self.console.print(f"{i}. {label}")
 
             # lignes standardisées
-            self.console.print(
-                f"{len(items)+1}. [yellow]Retour[/yellow]  ([bold]R[/bold])"
-            )
+            if not logout:
+                self.console.print(
+                    f"\n[bold yellow]R.[/bold yellow][yellow] Retour[/yellow]"
+                )
+            else:
+                self.console.print(
+                    f"\n[bold yellow]R.[/bold yellow][yellow] Se déconnecter[/yellow]"
+                )
             self.print_quit_option()  # suppose qu'affiche "0. Quitter"
 
             # messages d'état
             self.app_state.display_error_or_success_message()
 
             # lecture choix
-            raw = click.prompt(
-                "Ton choix (chiffre, R pour retour, 0 pour quitter)", type=str
-            ).strip()
+            raw = click.prompt("\nChoix", type=str).strip()
             choice = raw.upper()
 
             try:
@@ -78,6 +82,8 @@ class MenuView(BaseView):
                     self.handle_quit()
                     return
                 if choice in ("R", "BACK"):
+                    if logout:
+                        self.cli_utils.invoke(ctx, "logout")
                     break
 
                 if choice.isdigit():
@@ -85,234 +91,122 @@ class MenuView(BaseView):
                     if 1 <= idx <= len(items):
                         _, action = items[idx - 1]
                         action()  # exécute l’action
-                    elif idx == len(items) + 1:
-                        break
                     else:
-                        self.console.print("[red]Choix invalide[/red]")
+                        self.app_state.set_error_message("[red]Choix invalide[/red]")
                 else:
-                    self.console.print("[red]Choix invalide[/red]")
+                    self.app_state.set_error_message("[red]Choix invalide[/red]")
 
             except Exception as e:
                 # Centralise l’erreur pour un affichage uniformisé
                 self.app_state.set_error_message(str(e))
 
     def run(self, ctx: click.Context) -> None:
-        while True:
-            self._clear_screen()
+        items = [
+            ("Clients", lambda: self._menu_clients(ctx)),
+            ("Contrats", lambda: self._menu_contracts(ctx)),
+            ("Événements", lambda: self._menu_events(ctx)),
+            ("Utilisateurs", lambda: self._menu_users(ctx)),
+        ]
 
-            self.console.print("\n[bold cyan]=== CRM — Menu principal ===[/bold cyan]")
-            self.console.print("1. Clients")
-            self.console.print("2. Contrats")
-            self.console.print("3. Événements")
-            self.console.print("4. Utilisateurs")
-            self.console.print("5.[yellow] Se déconnecter [/yellow]")
-            self.print_quit_option()
-
-            self.app_state.display_error_or_success_message()
-
-            choice = self.ask_choice()
-
-            try:
-                if choice == 0:
-                    self.handle_quit()
-                if choice == 1:
-                    self._menu_clients(ctx)
-                elif choice == 2:
-                    self._menu_contracts(ctx)
-                elif choice == 3:
-                    self._menu_events(ctx)
-                elif choice == 4:
-                    self._menu_users(ctx)
-                elif choice == 5:
-                    self.cli_utils.invoke(ctx, "logout")
-                    break
-                else:
-                    self.app_state.set_error_message("Choix invalide")
-                    self.app_state.testprint()
-
-            except Exception as e:
-                self.app_state.set_error_message(str(e))
+        self.run_menu(ctx, "=== CRM — Menu principal ===", items, logout=True)
 
     def _menu_clients(self, ctx: click.Context) -> None:
-        while True:
-            self._clear_screen()
-            self.console.print("\n[bold cyan]— Clients —[/bold cyan]")
-            self.console.print("1. Créer un client")
-            self.console.print("2. Lister les clients")
-            self.console.print("3. Modifier un client")
-            self.console.print("4. Supprimer un client")
-            self.console.print("5. [yellow]Retour[/yellow]")
-            self.print_quit_option()
-
-            self.app_state.display_error_or_success_message()
-
-            choice = self.ask_choice()
-
-            try:
-                if choice == 0:
-                    self.handle_quit()
-                elif choice == 1:
-                    self.cli_utils.invoke(ctx, "create-client")
-                elif choice == 2:
-                    self.cli_utils.invoke(ctx, "list-clients")
-                elif choice == 3:
-                    self.cli_utils.invoke(ctx, "update-client")
-                elif choice == 4:
-                    self.cli_utils.invoke(ctx, "delete-client")
-                elif choice == 5:
-                    break
-                else:
-                    self.console.print("[red]Choix invalide[/red]")
-            except Exception as e:
-                self.app_state.set_error_message(str(e))
+        items = [
+            ("Créer un client", lambda: self.cli_utils.invoke(ctx, "create-client")),
+            ("Lister les clients", lambda: self.cli_utils.invoke(ctx, "list-clients")),
+            ("Modifier un client", lambda: self.cli_utils.invoke(ctx, "update-client")),
+            (
+                "Supprimer un client",
+                lambda: self.cli_utils.invoke(ctx, "delete-client"),
+            ),
+        ]
+        self.run_menu(ctx, "-- Clients --", items)
 
     def _menu_contracts(self, ctx: click.Context) -> None:
-        while True:
-            self._clear_screen()
-            self.console.print("\n[bold cyan]— Contrats —[/bold cyan]")
-            self.console.print("1. Créer un contrat")
-            self.console.print("2. Lister les contrats")
-            self.console.print("3. Signer un contrat")
-            self.console.print("4. Enregistrer un paiement")
-            self.console.print("5. Supprimer un contrat")
-            self.console.print("6. [yellow]Retour[/yellow]")
-            self.print_quit_option()
-
-            self.app_state.display_error_or_success_message()
-            choice = self.ask_choice()
-
-            try:
-                if choice == 0:
-                    self.handle_quit()
-                elif choice == 1:
-                    self.cli_utils.invoke(ctx, "create-contract")
-                elif choice == 2:
-                    self.cli_utils.invoke(ctx, "list-contracts")
-                elif choice == 3:
-                    self.cli_utils.invoke(ctx, "sign-contract")
-                elif choice == 4:
-                    self.cli_utils.invoke(ctx, "update-contract-amount")
-                elif choice == 5:
-                    self.cli_utils.invoke(ctx, "delete-contract")
-                elif choice == 6:
-                    break
-                else:
-                    self.console.print("[red]Choix invalide[/red]")
-            except Exception as e:
-                self.app_state.set_error_message(str(e))
+        items = [
+            ("Créer un contrat", lambda: self.cli_utils.invoke(ctx, "create-contract")),
+            (
+                "Lister les contrats",
+                lambda: self.cli_utils.invoke(ctx, "list-contracts"),
+            ),
+            ("Signer un contrat", lambda: self.cli_utils.invoke(ctx, "sign-contract")),
+            (
+                "Enregistrer un paiement",
+                lambda: self.cli_utils.invoke(ctx, "update-contract-amount"),
+            ),
+            (
+                "Supprimer un contrat",
+                lambda: self.cli_utils.invoke(ctx, "delete-contract"),
+            ),
+        ]
+        self.run_menu(ctx, "-- Contrats --", items)
 
     def _menu_events(self, ctx: click.Context) -> None:
-        while True:
-            self._clear_screen()
-            self.console.print("\n[bold cyan]— Evénements —[/bold cyan]")
-            self.console.print("1. Créer un événement")
-            self.console.print("2. Lister les événements")
-            self.console.print("3. Modifier un événement")
-            self.console.print("4. Ajouter une note")
-            self.console.print("5. Retirer une note")
-            self.console.print("6. Assigner le support")
-            self.console.print("7. Supprimer un événement")
-            self.console.print("8. [yellow]Retour[/yellow]")
-            self.print_quit_option()
-
-            self.app_state.display_error_or_success_message()
-            choice = self.ask_choice()
-
-            try:
-                if choice == 0:
-                    self.handle_quit()
-                elif choice == 1:
-                    self.cli_utils.invoke(ctx, "create-event")
-                elif choice == 2:
-                    self.cli_utils.invoke(ctx, "list-events")
-                elif choice == 3:
-                    self.cli_utils.invoke(ctx, "update-event")
-                elif choice == 4:
-                    self.cli_utils.invoke(ctx, "add-event-note")
-                elif choice == 5:
-                    self.cli_utils.invoke(ctx, "delete-note")
-                elif choice == 6:
-                    self.cli_utils.invoke(ctx, "update-support")
-                elif choice == 7:
-                    self.cli_utils.invoke(ctx, "delete-event")
-                elif choice == 8:
-                    break
-                else:
-                    self.console.print("[red]Choix invalide[/red]")
-            except Exception as e:
-                self.app_state.set_error_message(str(e))
+        items = [
+            ("Créer un événement", lambda: self.cli_utils.invoke(ctx, "create-event")),
+            (
+                "Lister les événements",
+                lambda: self.cli_utils.invoke(ctx, "list-events"),
+            ),
+            (
+                "Modifier un événement",
+                lambda: self.cli_utils.invoke(ctx, "update-event"),
+            ),
+            ("Ajouter une note", lambda: self.cli_utils.invoke(ctx, "add-event-note")),
+            ("Retirer une note", lambda: self.cli_utils.invoke(ctx, "delete-note")),
+            (
+                "Assigner le support",
+                lambda: self.cli_utils.invoke(ctx, "update-support"),
+            ),
+            (
+                "Supprimer un événement",
+                lambda: self.cli_utils.invoke(ctx, "delete-event"),
+            ),
+        ]
+        self.run_menu(ctx, "Evénements", items)
 
     def _menu_users(self, ctx: click.Context) -> None:
-        while True:
-            self._clear_screen()
-            self.console.print("\n[bold cyan]— Utilisateurs —[/bold cyan]")
-            self.console.print("1. Créer un utilisateur")
-            self.console.print("2. Lister les utilisateurs")
-            self.console.print("3. Modifier un utilisateur")
-            self.console.print("4. Supprimer un utilisateur")
-            self.console.print("5. Retour")
-            self.print_quit_option()
-
-            self.app_state.display_error_or_success_message()
-            choice = self.ask_choice()
-
-            try:
-                if choice == 0:
-                    self.handle_quit()
-                elif choice == 1:
-                    self.cli_utils.invoke(ctx, "create-user")
-                elif choice == 2:
-                    self.cli_utils.invoke(ctx, "list-users")
-                elif choice == 3:
-                    self.cli_utils.invoke(ctx, "update-user")
-                elif choice == 4:
-                    self.cli_utils.invoke(ctx, "delete-user")
-                elif choice == 5:
-                    break
-                else:
-                    self.console.print("[red]Choix invalide[/red]")
-            except Exception as e:
-                self.app_state.set_error_message(str(e))
+        items = [
+            ("Créer un utilisateur", lambda: self.cli_utils.invoke(ctx, "create-user")),
+            (
+                "Lister les utilisateurs",
+                lambda: self.cli_utils.invoke(ctx, "list-users"),
+            ),
+            (
+                "Modifier un utilisateur",
+                lambda: self.cli_utils.invoke(ctx, "update-user"),
+            ),
+            (
+                "Supprimer un utilisateur",
+                lambda: self.cli_utils.invoke(ctx, "delete-user"),
+            ),
+        ]
+        self.run_menu(ctx, "-- Utilisateurs --", items)
 
     def modify_user_menu(self, user_id: int, username: str, ctx: click.Context) -> None:
-        while True:
-            self._clear_screen()
-            self.console.print(
-                f"\n[bold yellow]-- Modification de l'utilisateur : '{username}' --[/bold yellow]"
-            )
-            self.console.print("1. Modifier les informations")
-            self.console.print("2. Modifier le mot de passe")
-            self.console.print("3. Ajouter un rôle")
-            self.console.print("4. Supprimer un rôle")
-            self.console.print("5. Retour")
-            self.print_quit_option()
-
-            self.app_state.display_error_or_success_message()
-            choice = self.ask_choice()
-
-            try:
-                if choice == 0:
-                    self.handle_quit()
-                elif choice == 1:
-                    self.cli_utils.invoke(ctx, "update-user-infos", user_id=user_id)
-                    break
-                elif choice == 2:
-                    self.cli_utils.invoke(ctx, "update-user-password", user_id=user_id)
-                    break
-                elif choice == 3:
-                    self.cli_utils.invoke(ctx, "add-user-role", user_id=user_id)
-                    break
-                elif choice == 4:
-                    self.cli_utils.invoke(ctx, "remove-user-role", user_id=user_id)
-                    break
-                elif choice == 5:
-                    break
-                else:
-                    self.app_state.set_error_message("Choix invalide")
-                    self.app_state.testprint()
-
-            except Exception as e:
-                self.app_state.set_error_message(str(e))
+        items = [
+            (
+                "Modifier les informations",
+                lambda: self.cli_utils.invoke(
+                    ctx, "update-user-infos", user_id=user_id
+                ),
+            ),
+            (
+                "Modifier le mot de passe",
+                lambda: self.cli_utils.invoke(
+                    ctx, "update-user-password", user_id=user_id
+                ),
+            ),
+            (
+                "Ajouter un rôle",
+                lambda: self.cli_utils.invoke(ctx, "add-user-role", user_id=user_id),
+            ),
+            (
+                "Supprimer un rôle",
+                lambda: self.cli_utils.invoke(ctx, "remove-user-role", user_id=user_id),
+            ),
+        ]
+        self.run_menu(ctx, f"-- Modification de l'utilisateur : {username} --", items)
 
 
 # ----------------------
