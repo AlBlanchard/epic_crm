@@ -6,9 +6,10 @@ from ..auth.permission import Permission
 from ..crud.event_crud import EventCRUD
 from ..crud.contract_crud import ContractCRUD
 from ..crud.user_crud import UserCRUD
-from ..serializers.event_serializer import EventSerializer
+from ..serializers.event_serializer import EventSerializer, EventNoteSerializer
 from ..models.user import User
 from ..utils.validations import Validations
+from ..utils.app_state import AppState
 
 
 class EventController(AbstractController):
@@ -19,6 +20,8 @@ class EventController(AbstractController):
         self.contracts = ContractCRUD(self.session)
         self.users = UserCRUD(self.session)
         self.serializer = EventSerializer()
+        self.app_state = AppState()
+        self.note_serializer = EventNoteSerializer()
 
     # ---------- Helpers ----------
     def _get_current_user(self) -> User:
@@ -60,6 +63,7 @@ class EventController(AbstractController):
             rows = self.events.get_all(filters=filters, order_by=order_by)
         else:
             rows = self.events.get_by_support_contact(me.id)
+
         ser = self.serializer if fields is None else EventSerializer(fields=fields)
         return ser.serialize_list(rows)
 
@@ -114,6 +118,27 @@ class EventController(AbstractController):
         ser = self.serializer if fields is None else EventSerializer(fields=fields)
         return ser.serialize_list(rows)
 
+    def list_event_notes(self, event_id: int) -> List[Dict[str, Any]]:
+        me = self._get_current_user()
+        if not Permission.read_permission(me, "event"):
+            raise PermissionError("Accès refusé.")
+
+        notes = self.events.get_notes(event_id)
+        if not notes:
+            raise ValueError("Notes introuvables.")
+
+        return self.note_serializer.serialize_list(notes)
+
+    def get_support_contact_id(self, event_id: int) -> Optional[int]:
+        me = self._get_current_user()
+        if not Permission.read_permission(me, "event"):
+            raise PermissionError("Accès refusé.")
+
+        event = self.events.get_by_id(event_id)
+        if not event:
+            return None
+        return event.support_contact_id
+
     # ---------- Create ----------
     def create_event(self, data: Dict[str, Any]) -> Dict[str, Any]:
         me = self._get_current_user()
@@ -128,6 +153,19 @@ class EventController(AbstractController):
         payload = {**data}
         event = self.events.create(payload)
         return self.serializer.serialize(event)
+
+    def create_note(self, event_id: int, note: str):
+        me = self._get_current_user()
+        ev = self.events.get_by_id(event_id)
+        if not ev:
+            raise ValueError("Événement introuvable.")
+
+        if not Permission.update_permission(me, "event"):
+            raise PermissionError("Accès refusé.")
+
+        note = self.events.create_note({"event_id": event_id, "note": note})
+        if not note:
+            raise ValueError("Création de la note impossible.")
 
     # ---------- Update ----------
     def update_event(self, event_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -196,3 +234,14 @@ class EventController(AbstractController):
         ok = self.events.delete(event_id)
         if not ok:
             raise ValueError("Suppression impossible.")
+
+    def delete_note(self, event_id: int, note_id: int) -> None:
+        me = self._get_current_user()
+        owner_id = self.get_support_contact_id(event_id)
+        if not Permission.update_permission(me, "event", owner_id=owner_id):
+            raise PermissionError("Accès refusé.")
+
+        try:
+            self.events.delete_note(note_id)
+        except ValueError:
+            raise ValueError("Note introuvable.")

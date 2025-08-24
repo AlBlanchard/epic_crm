@@ -3,6 +3,7 @@ from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from ..models.event import Event
+from ..models.event import EventNote
 from ..models.contract import Contract
 from ..models.client import Client
 from datetime import datetime
@@ -31,6 +32,21 @@ class EventCRUD(AbstractBaseCRUD):
             self.session.rollback()
             raise
 
+    def create_note(self, note_data: Dict) -> EventNote:
+        """Crée une nouvelle note pour un événement."""
+        try:
+            note = EventNote(**note_data)
+            self.session.add(note)
+            self.session.commit()
+            self.session.refresh(note)
+            return note
+        except IntegrityError:
+            self.session.rollback()
+            raise
+        except Exception:
+            self.session.rollback()
+            raise
+
     # ---------- READ ----------
     def get_all(
         self,
@@ -48,12 +64,12 @@ class EventCRUD(AbstractBaseCRUD):
             limit=limit,
             offset=offset,
             eager_options=(
+                # N+1
+                selectinload(Event.contract),
                 selectinload(Event.notes),
                 selectinload(Event.support_contact),
-                # N+3
-                selectinload(Event.contract)
-                .selectinload(Contract.client)
-                .selectinload(Client.sales_contact),
+                # N+2
+                selectinload(Event.contract).selectinload(Contract.client),
             ),
         )
 
@@ -83,6 +99,10 @@ class EventCRUD(AbstractBaseCRUD):
             .filter(Event.date_start <= end_date)
             .all()
         )
+
+    def get_notes(self, event_id: int) -> List[EventNote]:
+        """Récupère les notes d'un événement."""
+        return self.session.query(EventNote).filter_by(event_id=event_id).all()
 
     # ---------- UPDATE ----------
     def update(self, event_id: int, event_data: Dict) -> Optional[Event]:
@@ -120,16 +140,21 @@ class EventCRUD(AbstractBaseCRUD):
             self.session.rollback()
             raise
 
+    def delete_note(self, note_id: int) -> bool:
+        """Supprime une note d'événement."""
+        note = self.session.get(EventNote, note_id)
+        if not note:
+            return False
+
+        try:
+            self.session.delete(note)
+            self.session.commit()
+            return True
+        except Exception:
+            self.session.rollback()
+            raise
+
     # ---------- UTILITY ----------
     def exists(self, event_id: int) -> bool:
         """Vérifie si un événement existe."""
         return self.session.get(Event, event_id) is not None
-
-    def count(self, filters: Optional[Dict[str, Any]] = None) -> int:
-        """Compte les événements avec filtres optionnels."""
-        query = self.session.query(Event)
-        if filters:
-            for key, value in filters.items():
-                if hasattr(Event, key):
-                    query = query.filter(getattr(Event, key) == value)
-        return query.count()

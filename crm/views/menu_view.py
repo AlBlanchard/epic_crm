@@ -1,6 +1,6 @@
 # views/menu_view.py
 import click
-from typing import Optional
+from typing import Optional, Callable
 from rich.console import Console
 from .auth_view import AuthView
 from .view import BaseView
@@ -39,15 +39,62 @@ class MenuView(BaseView):
         self.app_state = AppState()
         self.cli_utils = CliUtils()
 
-    @staticmethod
-    def _invoke_cmd_by_name(ctx: click.Context, name: str, **kwargs):
-        root = ctx.find_root()
-        if isinstance(root.command, click.Group):
-            cmd = root.command.get_command(ctx, name)
-            if cmd is None:
-                raise click.ClickException(f"Commande '{name}' introuvable.")
-            return ctx.invoke(cmd, **kwargs)
-        raise click.ClickException("Root command n'est pas un command group.")
+    def run_menu(
+        self,
+        ctx: click.Context,
+        title: str,
+        items: list[tuple[str, Callable]],  # [(label, action), ...]
+    ) -> None:
+        """
+        Affiche un menu et exécute les actions correspondantes.
+        - items: liste de (label, action). La numérotation démarre à 1.
+        - R: retour (break), 0: quitter (self.handle_quit()).
+        """
+        while True:
+            self._clear_screen()
+            self.console.print(f"\n[bold cyan]— {title} —[/bold cyan]")
+
+            # affichage des entrées numérotées
+            for i, (label, _) in enumerate(items, start=1):
+                self.console.print(f"{i}. {label}")
+
+            # lignes standardisées
+            self.console.print(
+                f"{len(items)+1}. [yellow]Retour[/yellow]  ([bold]R[/bold])"
+            )
+            self.print_quit_option()  # suppose qu'affiche "0. Quitter"
+
+            # messages d'état
+            self.app_state.display_error_or_success_message()
+
+            # lecture choix
+            raw = click.prompt(
+                "Ton choix (chiffre, R pour retour, 0 pour quitter)", type=str
+            ).strip()
+            choice = raw.upper()
+
+            try:
+                if choice == "0":
+                    self.handle_quit()
+                    return
+                if choice in ("R", "BACK"):
+                    break
+
+                if choice.isdigit():
+                    idx = int(choice)
+                    if 1 <= idx <= len(items):
+                        _, action = items[idx - 1]
+                        action()  # exécute l’action
+                    elif idx == len(items) + 1:
+                        break
+                    else:
+                        self.console.print("[red]Choix invalide[/red]")
+                else:
+                    self.console.print("[red]Choix invalide[/red]")
+
+            except Exception as e:
+                # Centralise l’erreur pour un affichage uniformisé
+                self.app_state.set_error_message(str(e))
 
     def run(self, ctx: click.Context) -> None:
         while True:
@@ -161,10 +208,11 @@ class MenuView(BaseView):
             self.console.print("1. Créer un événement")
             self.console.print("2. Lister les événements")
             self.console.print("3. Modifier un événement")
-            self.console.print("4. Ajouter des notes")
-            self.console.print("5. Ajouter/Modifier le support")
-            self.console.print("6. Supprimer un événement")
-            self.console.print("7. [yellow]Retour[/yellow]")
+            self.console.print("4. Ajouter une note")
+            self.console.print("5. Retirer une note")
+            self.console.print("6. Assigner le support")
+            self.console.print("7. Supprimer un événement")
+            self.console.print("8. [yellow]Retour[/yellow]")
             self.print_quit_option()
 
             self.app_state.display_error_or_success_message()
@@ -180,12 +228,14 @@ class MenuView(BaseView):
                 elif choice == 3:
                     self.cli_utils.invoke(ctx, "update-event")
                 elif choice == 4:
-                    self.cli_utils.invoke(ctx, "add-event-notes")
+                    self.cli_utils.invoke(ctx, "add-event-note")
                 elif choice == 5:
-                    self.cli_utils.invoke(ctx, "update-event-support")
+                    self.cli_utils.invoke(ctx, "delete-note")
                 elif choice == 6:
-                    self.cli_utils.invoke(ctx, "delete-event")
+                    self.cli_utils.invoke(ctx, "update-support")
                 elif choice == 7:
+                    self.cli_utils.invoke(ctx, "delete-event")
+                elif choice == 8:
                     break
                 else:
                     self.console.print("[red]Choix invalide[/red]")

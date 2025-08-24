@@ -48,7 +48,15 @@ class ContractSerializer:
         # Champs calculés
         for name, getter in self.COMPUTED_FIELDS.items():
             if name in self.fields:
-                data[name] = self._to_iso(getter(contract))
+                try:
+                    value = getter(contract)
+                except Exception as e:
+                    value = None
+
+                if value is None:
+                    value = "Aucun"
+
+                data[name] = self._to_iso(value)
 
         if extra:
             data.update(extra)

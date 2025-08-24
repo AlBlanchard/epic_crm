@@ -5,6 +5,7 @@ from ..controllers.client_controller import ClientController
 from ..controllers.event_controller import EventController
 from ..views.contract_view import ContractView
 from ..views.client_view import ClientView
+from ..views.user_view import UserView
 from ..views.event_view import EventView
 from ..database import SessionLocal
 from ..auth.permission import Permission
@@ -74,3 +75,262 @@ def create_event_cmd(ctx: click.Context, contract_id: int) -> None:
     except Exception as e:
         if view.app_state:
             view.app_state.set_error_message(str(e))
+
+
+@click.command(name="list-events")
+@click.pass_context
+def list_events_cmd(ctx: click.Context) -> None:
+    view: EventView = (
+        ctx.obj.get("event_view")
+        if ctx and ctx.obj and "event_view" in ctx.obj
+        else EventView()
+    )
+
+    ctrl: EventController = ctx.obj.get("event_controller") or EventController(
+        session=SessionLocal()
+    )
+
+    try:
+        rows = ctrl.list_events()
+        view.list_events(rows)
+    except Exception as e:
+        if view.app_state:
+            view.app_state.set_error_message(str(e))
+
+
+@click.command(name="update-event")
+@click.option("--eventid", "event_id", type=int, help="ID de l'événement à modifier")
+@click.pass_context
+def update_event_cmd(ctx: click.Context, event_id: int) -> None:
+    view: EventView = (
+        ctx.obj.get("event_view")
+        if ctx and ctx.obj and "event_view" in ctx.obj
+        else EventView()
+    )
+
+    ctrl: EventController = ctx.obj.get("event_controller") or EventController(
+        session=SessionLocal()
+    )
+
+    me = ctrl._get_current_user()
+    if not Permission.update_permission(me, "event", event_id):
+        raise PermissionError("Accès refusé.")
+
+    if not event_id:
+        if Permission.update_permission(me, "event"):
+            rows = ctrl.list_events()
+        elif Permission.update_own_permission(me, "event"):
+            rows = ctrl.list_my_events()
+        else:
+            raise PermissionError("Accès refusé.")
+
+        selected_id = view.list_events(rows, selector=True)
+        if selected_id is None:
+            return
+        event_id = selected_id
+
+    event = ctrl.get_event(event_id)
+    new_data = view.update_event_flow(event)
+
+    if not new_data:
+        return
+
+    try:
+        ctrl.update_event(event_id, new_data)
+        view.app_state.set_success_message("L'événement a été mis à jour avec succès.")
+    except Exception as e:
+        view.app_state.set_error_message(str(e))
+
+
+@click.command(name="add-event-note")
+@click.option(
+    "--eventid", "event_id", type=int, help="ID de l'événement auquel ajouter une note"
+)
+@click.pass_context
+def add_event_note_cmd(ctx: click.Context, event_id: int) -> None:
+    view: EventView = (
+        ctx.obj.get("event_view")
+        if ctx and ctx.obj and "event_view" in ctx.obj
+        else EventView()
+    )
+
+    ctrl: EventController = ctx.obj.get("event_controller") or EventController(
+        session=SessionLocal()
+    )
+
+    me = ctrl._get_current_user()
+    if not Permission.update_permission(me, "event", event_id):
+        raise PermissionError("Accès refusé.")
+
+    if not event_id:
+        if Permission.update_permission(me, "event"):
+            rows = ctrl.list_events()
+        elif Permission.update_own_permission(me, "event"):
+            rows = ctrl.list_my_events()
+        else:
+            raise PermissionError("Accès refusé.")
+
+        selected_id = view.list_events(rows, selector=True)
+        if selected_id is None:
+            return
+        event_id = selected_id
+
+    note = view.add_event_note_flow()
+
+    try:
+        ctrl.create_note(event_id, note)
+        view.app_state.set_success_message("La note a été ajoutée avec succès.")
+    except Exception as e:
+        view.app_state.set_error_message(str(e))
+
+
+@click.command(name="delete-note")
+@click.option(
+    "--eventid",
+    "event_id",
+    type=int,
+    help="ID de l'événement auquel supprimer une note",
+)
+@click.pass_context
+def delete_note_cmd(ctx: click.Context, event_id: int) -> None:
+    view: EventView = (
+        ctx.obj.get("event_view")
+        if ctx and ctx.obj and "event_view" in ctx.obj
+        else EventView()
+    )
+
+    ctrl: EventController = ctx.obj.get("event_controller") or EventController(
+        session=SessionLocal()
+    )
+
+    me = ctrl._get_current_user()
+    if not Permission.update_permission(me, "event", event_id):
+        raise PermissionError("Accès refusé.")
+
+    if not event_id:
+        if Permission.update_permission(me, "event"):
+            rows = ctrl.list_events()
+        elif Permission.update_own_permission(me, "event"):
+            rows = ctrl.list_my_events()
+        else:
+            raise PermissionError("Accès refusé.")
+
+        selected_id = view.list_events(rows, selector=True)
+        if selected_id is None:
+            return
+        event_id = selected_id
+
+    notes_list = ctrl.list_event_notes(event_id)
+    selected_note_id = view.list_notes(notes_list, selector=True)
+    if selected_note_id is None:
+        return
+
+    try:
+        ctrl.delete_note(event_id, selected_note_id)
+        view.app_state.set_success_message("La note a été supprimée avec succès.")
+    except Exception as e:
+        view.app_state.set_error_message(str(e))
+
+
+@click.command("update-support")
+@click.option("--eventid", "event_id", type=int, help="ID de l'événement à modifier")
+@click.option("--supportid", "new_support_id", type=int, help="ID du nouveau support")
+@click.pass_context
+def update_support_cmd(
+    ctx: click.Context, event_id: int | None = None, new_support_id: int | None = None
+) -> None:
+    view: EventView = (
+        ctx.obj.get("event_view")
+        if ctx and ctx.obj and "event_view" in ctx.obj
+        else EventView()
+    )
+
+    user_view: UserView = (
+        ctx.obj.get("user_view")
+        if ctx and ctx.obj and "user_view" in ctx.obj
+        else UserView()
+    )
+
+    ctrl: EventController = ctx.obj.get("event_controller") or EventController(
+        session=SessionLocal()
+    )
+
+    user_ctrl: UserController = ctx.obj.get("user_controller") or UserController(
+        session=SessionLocal()
+    )
+
+    me = ctrl._get_current_user()
+    if not Permission.update_permission(me, "event", event_id):
+        raise PermissionError("Accès refusé.")
+
+    if not event_id:
+        if Permission.update_permission(me, "event"):
+            rows = ctrl.list_events()
+        elif Permission.update_own_permission(me, "event"):
+            rows = ctrl.list_my_events()
+        else:
+            raise PermissionError("Accès refusé.")
+
+        selected_id = view.list_events(rows, selector=True)
+        if selected_id is None:
+            return
+        event_id = selected_id
+
+    if not new_support_id:
+        if Permission.read_permission(me, "user"):
+            rows = user_ctrl.get_all_users_by_role("support")
+        else:
+            raise PermissionError("Accès refusé.")
+
+        selected_id = user_view.list_users(rows, selector=True)
+        if selected_id is None:
+            return
+        new_support_id = selected_id
+
+    payload = {}
+    if new_support_id:
+        payload["support_contact_id"] = new_support_id
+
+    try:
+        ctrl.update_event(event_id, payload)
+        view.app_state.set_success_message("L'événement a été mis à jour avec succès.")
+    except Exception as e:
+        view.app_state.set_error_message(str(e))
+
+
+@click.command(name="delete-event")
+@click.option("--eventid", "event_id", type=int, help="ID de l'événement à supprimer")
+@click.pass_context
+def delete_event_cmd(ctx: click.Context, event_id: int | None = None) -> None:
+    view: EventView = (
+        ctx.obj.get("event_view")
+        if ctx and ctx.obj and "event_view" in ctx.obj
+        else EventView()
+    )
+
+    ctrl: EventController = ctx.obj.get("event_controller") or EventController(
+        session=SessionLocal()
+    )
+
+    me = ctrl._get_current_user()
+    if not Permission.delete_permission(me, "event", event_id):
+        raise PermissionError("Accès refusé.")
+
+    if not event_id:
+        if Permission.delete_permission(me, "event"):
+            rows = ctrl.list_events()
+        elif Permission.delete_own_permission(me, "event"):
+            rows = ctrl.list_my_events()
+        else:
+            raise PermissionError("Accès refusé.")
+
+        selected_id = view.list_events(rows, selector=True)
+        if selected_id is None:
+            return
+        event_id = selected_id
+
+    try:
+        ctrl.delete_event(event_id)
+        view.app_state.set_success_message("L'événement a été supprimé avec succès.")
+    except Exception as e:
+        view.app_state.set_error_message(str(e))

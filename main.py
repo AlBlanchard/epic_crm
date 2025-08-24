@@ -27,7 +27,15 @@ from crm.cli.contract_commands import (
     update_contract_amount_cmd,
     delete_contract_cmd,
 )
-from crm.cli.event_commands import create_event_cmd
+from crm.cli.event_commands import (
+    create_event_cmd,
+    list_events_cmd,
+    update_event_cmd,
+    add_event_note_cmd,
+    delete_note_cmd,
+    update_support_cmd,
+    delete_event_cmd,
+)
 from crm.utils.app_state import AppState
 
 
@@ -109,6 +117,12 @@ cli.add_command(delete_contract_cmd)
 
 # -- Events--
 cli.add_command(create_event_cmd)
+cli.add_command(list_events_cmd)
+cli.add_command(update_event_cmd)
+cli.add_command(add_event_note_cmd)
+cli.add_command(delete_note_cmd)
+cli.add_command(update_support_cmd)
+cli.add_command(delete_event_cmd)
 
 
 if __name__ == "__main__":

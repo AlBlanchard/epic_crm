@@ -191,29 +191,66 @@ class BaseView(ABC):
         sys.exit(0)
 
     @staticmethod
-    def get_date_input(title: str = "Saisir une date") -> datetime:
+    def get_date_input(
+        title: str = "Saisir une date", default: datetime | None = None
+    ) -> datetime:
         """Demande jour, mois, année, heure, minute et renvoie (datetime, string)."""
         click.echo(title)
+        console = Console()
+
+        dt = None
+
+        if default:
+            dt = datetime.fromisoformat(str(default))
+            default_date_str = BaseView.pretty_datetime(dt)
+            console.print(
+                f"[dim]Date actuelle: [bold green]{default_date_str}[/bold green][/dim]"
+            )
 
         # Entrées simples (validators à part)
         year = BaseView.get_valid_input(
-            "Année (ex: 2025)", transform=int, validate=Validations.validate_year
+            "Année (ex: 2025)",
+            default=dt.year if dt else None,
+            transform=int,
+            validate=Validations.validate_year,
         )
         month = BaseView.get_valid_input(
-            "Mois (1-12)", transform=int, validate=Validations.validate_month
+            "Mois (1-12)",
+            default=dt.month if dt else None,
+            transform=int,
+            validate=Validations.validate_month,
         )
         day = BaseView.get_valid_input(
             "Jour (1-31)",
+            default=dt.day if dt else None,
             transform=int,
             validate=lambda x: Validations.validate_day_in_month(x, month, year),
         )
         hour = BaseView.get_valid_input(
-            "Heure (0-23)", transform=int, validate=Validations.validate_hour
+            "Heure (0-23)",
+            default=dt.hour if dt else None,
+            transform=int,
+            validate=Validations.validate_hour,
         )
         minute = BaseView.get_valid_input(
-            "Minute (0-59)", transform=int, validate=Validations.validate_minute
+            "Minute (0-59)",
+            default=dt.minute if dt else None,
+            transform=int,
+            validate=Validations.validate_minute,
         )
 
         dt = datetime(year, month, day, hour, minute)
 
         return dt
+
+    @staticmethod
+    def pretty_datetime(dt: datetime | str) -> str:
+        if isinstance(dt, str):
+            dt = datetime.fromisoformat(dt)
+
+        day = dt.day
+        month_name = dt.strftime("%B")  # Nom du mois en anglais
+        year = dt.year
+        hour12 = dt.strftime("%I").lstrip("0")  # Heure en 12h, sans zéro devant
+        ampm = dt.strftime("%p")  # AM ou PM
+        return f"{day} {month_name} {year} @ {hour12}{ampm}"

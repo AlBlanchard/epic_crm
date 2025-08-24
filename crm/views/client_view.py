@@ -57,7 +57,7 @@ class ClientView(BaseView):
 
         return rows
 
-    def create_client_flow(self, sales_contact_id: int) -> Dict[str, Any]:
+    def create_client_flow(self, sales_contact_id: int) -> Dict[str, Any] | None:
         try:
             self._clear_screen()
 
@@ -84,7 +84,6 @@ class ClientView(BaseView):
                 self.app_state.set_neutral_message("Action annulée par l'utilisateur.")
             else:
                 self.app_state.set_error_message(str(e))
-            return {}
 
     def list_clients(
         self,

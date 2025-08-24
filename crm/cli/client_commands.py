@@ -24,17 +24,16 @@ def create_client_cmd(ctx: click.Context) -> None:
     user_ctrl: UserController = ctx.obj.get("user_controller") or UserController(
         session=SessionLocal()
     )
-
-    # Il y a une vérif dans le ctrl mais on la refait ici sinon ça lance les prompts
-    me = user_ctrl._get_current_user()
-    if not Permission.create_permission(me, "client"):
-        raise PermissionError("Accès refusé.")
-
-    result = view.create_client_flow(sales_contact_id=me.id)
-    if result is None:
-        return
-
     try:
+        # Il y a une vérif dans le ctrl mais on la refait ici sinon ça lance les prompts
+        me = user_ctrl._get_current_user()
+        if not Permission.create_permission(me, "client"):
+            raise PermissionError("Accès refusé.")
+
+        result = view.create_client_flow(sales_contact_id=me.id)
+        if result is None:
+            return
+
         ctrl.create_client(result)
         view.app_state.set_success_message("Le client a été créé avec succès.")
     except Exception as e:
