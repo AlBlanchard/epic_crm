@@ -72,45 +72,6 @@ class UserCRUD(AbstractBaseCRUD):
         """Récupère un utilisateur par son ID."""
         return self.session.get(User, user_id)
 
-    def get_by_ids(self, user_ids: List[int]) -> List[User]:
-        """Récupère plusieurs utilisateurs par leurs IDs."""
-        return self.session.query(User).filter(User.id.in_(user_ids)).all()
-
-    def find_by_username(self, username: str) -> Optional[User]:
-        """Trouve un utilisateur par son nom d'utilisateur."""
-        return self.session.query(User).filter_by(username=username).first()
-
-    def find_by_email(self, email: str) -> Optional[User]:
-        """Trouve un utilisateur par son email."""
-        return self.session.query(User).filter_by(email=email).first()
-
-    def get_users_by_role(self, role_name: str) -> List[User]:
-        """Récupère tous les utilisateurs ayant un rôle spécifique."""
-        return (
-            self.session.query(User)
-            .join(UserRole, UserRole.user_id == User.id)
-            .join(Role, Role.id == UserRole.role_id)
-            .filter(Role.name == role_name)
-            .all()
-        )
-
-    def exists_by_username(self, username: str) -> bool:
-        """Vérifie si un utilisateur existe avec ce nom d'utilisateur."""
-        return self.session.query(User).filter_by(username=username).first() is not None
-
-    def exists_by_email(self, email: str) -> bool:
-        """Vérifie si un utilisateur existe avec cet email."""
-        return self.session.query(User).filter_by(email=email).first() is not None
-
-    def count_users(self, filters: Optional[Dict[str, Any]] = None) -> int:
-        """Compte le nombre d'utilisateurs avec filtres optionnels."""
-        query = self.session.query(User)
-        if filters:
-            for key, value in filters.items():
-                if hasattr(User, key):
-                    query = query.filter(getattr(User, key) == value)
-        return query.count()
-
     # ---------- UPDATE ----------
     def update_user(self, user_id: int, user_data: Dict[str, Any]) -> Optional[User]:
         user = self.session.get(User, user_id)
@@ -239,18 +200,3 @@ class UserCRUD(AbstractBaseCRUD):
             .first()
             is not None
         )
-
-    def replace_user_roles(self, user_id: int, role_ids: List[int]) -> bool:
-        """Remplace tous les rôles d'un utilisateur."""
-        try:
-            self.session.query(UserRole).filter_by(user_id=user_id).delete()
-
-            for role_id in role_ids:
-                user_role = UserRole(user_id=user_id, role_id=role_id)
-                self.session.add(user_role)
-
-            self.session.commit()
-            return True
-        except Exception as e:
-            self.session.rollback()
-            raise

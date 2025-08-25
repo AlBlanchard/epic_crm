@@ -5,8 +5,6 @@ from sqlalchemy.exc import IntegrityError
 from ..models.event import Event
 from ..models.event import EventNote
 from ..models.contract import Contract
-from ..models.client import Client
-from datetime import datetime
 from sqlalchemy.orm import Session, selectinload
 
 
@@ -89,17 +87,6 @@ class EventCRUD(AbstractBaseCRUD):
             .all()
         )
 
-    def get_by_date_range(
-        self, start_date: datetime, end_date: datetime
-    ) -> List[Event]:
-        """Récupère les événements dans une plage de dates."""
-        return (
-            self.session.query(Event)
-            .filter(Event.date_start >= start_date)
-            .filter(Event.date_start <= end_date)
-            .all()
-        )
-
     def get_notes(self, event_id: int) -> List[EventNote]:
         """Récupère les notes d'un événement."""
         return self.session.query(EventNote).filter_by(event_id=event_id).all()
@@ -153,8 +140,3 @@ class EventCRUD(AbstractBaseCRUD):
         except Exception:
             self.session.rollback()
             raise
-
-    # ---------- UTILITY ----------
-    def exists(self, event_id: int) -> bool:
-        """Vérifie si un événement existe."""
-        return self.session.get(Event, event_id) is not None

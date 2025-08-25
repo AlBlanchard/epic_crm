@@ -1,13 +1,10 @@
 # crm/controllers/user_controller.py
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Dict, Any, Optional, List
 from .base import AbstractController
-from ..auth.auth import Authentication
 from ..auth.permission import Permission
 from ..crud.user_crud import UserCRUD
 from ..crud.role_crud import RoleCRUD
 from ..serializers.user_serializer import UserSerializer
-from ..models.user import User
-from ..utils.app_state import AppState
 
 
 class UserController(AbstractController):
@@ -17,25 +14,6 @@ class UserController(AbstractController):
         self.users = UserCRUD(self.session)
         self.roles = RoleCRUD(self.session)
         self.serializer = UserSerializer()
-
-    # ---------- Helpers ----------
-    def _get_current_user(self) -> User:
-        token = Authentication.load_token()
-        if not token:
-            raise PermissionError("Non authentifié.")
-        payload = Authentication.verify_token(token)
-        user_id = int(payload["sub"])
-        user = self.users.get_by_id(user_id)
-        if not user:
-            raise PermissionError("Utilisateur courant introuvable.")
-        return user
-
-    def _ensure_admin(self, me: User) -> None:
-        if not Permission.is_admin(me):
-            raise PermissionError("Accès refusé : administrateur requis.")
-
-    def _serialize_many(self, rows: List[User]) -> List[Dict[str, Any]]:
-        return self.serializer.serialize_list(rows)
 
     # ---------- Read ----------
     def get_all_users(
@@ -136,13 +114,6 @@ class UserController(AbstractController):
         if not user:
             raise ValueError("Utilisateur introuvable.")
         return user.username
-
-    def get_users_name_from_id_list(self, user_ids: List[int]) -> dict[int, str]:
-        """
-        Récupère un mapping {id: username} pour une liste d'IDs.
-        """
-        users = self.users.get_by_ids(user_ids)
-        return {u.id: u.username for u in users}
 
     # ---------- Create ----------
     def create_user(self, data: Dict[str, Any]) -> Dict[str, Any]:

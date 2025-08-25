@@ -1,4 +1,4 @@
-from typing import Any, Optional, Type, Dict, Callable, List, Sequence
+from typing import Any, Optional, Dict, List, Sequence
 from sqlalchemy.orm import Session, Query
 from abc import ABC
 
@@ -11,13 +11,13 @@ class AbstractBaseCRUD(ABC):
 
     def get_entities(
         self,
-        model,  # classe SQLAlchemy (Client, Contract, etc.)
+        model,
         owner_field: Optional[str] = None,
         owner_id: Optional[int] = None,
         filters: Optional[Dict[str, Any]] = None,
         order_by: Optional[str] = None,
         *,
-        eager_options: Sequence = (),  # ex. (selectinload(Client.sales_contact),)
+        eager_options: Sequence = (),  # ex : (selectinload(Client.sales_contact),)
         limit: Optional[int] = None,
         offset: int = 0,
     ) -> List:
@@ -48,11 +48,5 @@ class AbstractBaseCRUD(ABC):
             if key in columns:
                 col = getattr(model, key)
                 query = query.order_by(col.desc() if desc else col.asc())
-
-        # Pagination (facultatif)
-        if offset:
-            query = query.offset(offset)
-        if limit:
-            query = query.limit(limit)
 
         return query.all()

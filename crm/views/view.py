@@ -35,27 +35,6 @@ class BaseView(ABC):
         """Initialise les services spécifiques de la view."""
         pass
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc, tb):
-        if self._owns_session and self.session:
-            self.session.close()
-
-    @staticmethod
-    def _prompt_non_empty(label: str) -> str:
-        """Validation minimale côté View : non vide. Le reste => Controller."""
-        while True:
-            val = click.prompt(label).strip()
-            if val:
-                return val
-            Console().print("[red]Ce champ est requis.[/red]")
-
-    @staticmethod
-    def _prompt_optional(label: str) -> Optional[str]:
-        val = click.prompt(label, default="", show_default=False).strip()
-        return val or None
-
     @staticmethod
     def _clear_screen():
         """Efface le contenu de la console."""
@@ -66,6 +45,11 @@ class BaseView(ABC):
             os.system("cls")
         else:
             os.system("clear")
+
+    def _print_back_choice(self) -> None:
+        self.console.print(
+            "[italic yellow dim]CTRL+C ou entrer 'q' pour annuler.[/italic yellow dim]"
+        )
 
     def _print_table(
         self, title: str, columns: List[str], rows: List[Dict[str, Any]]

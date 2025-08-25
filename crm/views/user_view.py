@@ -143,6 +143,7 @@ class UserView(BaseView):
     def create_user_flow(self):
         try:
             self._clear_screen()
+            self._print_back_choice()
 
             username = self.get_valid_input("Nom d'utilisateur")
             email = self.get_valid_input("Email")
@@ -176,7 +177,7 @@ class UserView(BaseView):
         rows: list[dict],
         selector: bool = False,
         prompt: str = "[dim]Sélectionnez un utilisateur...[/dim]",
-    ) -> None:
+    ) -> int | None:
         self._clear_screen()
         rows = [self._asdict_user(r) for r in rows]
         self._print_table(
@@ -195,6 +196,7 @@ class UserView(BaseView):
         if selector:
             validate_number = Validations.validate_number
             self.console.print(prompt)
+            self._print_back_choice()
             str_user_id = self.get_valid_input(
                 "ID de l'utilisateur",
                 validate=validate_number,
@@ -203,8 +205,7 @@ class UserView(BaseView):
 
             user_id = int(str_user_id)
 
-            # ignore car l'IDE ne comprend pas que la validation empêche que ce soit None
-            return user_id  # type: ignore
+            return user_id
 
         self.console.print("\n[dim]Appuyez sur Entrée pour revenir au menu...[/dim]")
         self.app_state.display_error_or_success_message()
@@ -221,6 +222,7 @@ class UserView(BaseView):
             self.console.print(
                 f"\n[bold]Modification de l'utilisateur #{user_id}[/bold]"
             )
+            self._print_back_choice()
             username = self.get_valid_input(f"Nouveau nom", default=current_username)
             email = self.get_valid_input(f"Nouvel email", default=current_email)
             employee_number = self.get_valid_input(
@@ -244,6 +246,7 @@ class UserView(BaseView):
 
     def update_user_password_flow(self) -> str | None:
         try:
+            self._print_back_choice()
             new_password = self.get_valid_password(
                 "Nouveau mot de passe (laisser vide pour ne pas changer) :",
                 allow_empty=True,
@@ -275,6 +278,7 @@ class UserView(BaseView):
             for role in actual_roles_list:
                 self.console.print(f" - {role}")
 
+            self._print_back_choice()
             role_id = self._choose_role(roles_list)
             return int(role_id)
 

@@ -1,13 +1,11 @@
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 from .base import AbstractController
-from ..auth.auth import Authentication
 from ..auth.permission import Permission
 from ..crud.event_crud import EventCRUD
 from ..crud.contract_crud import ContractCRUD
 from ..crud.user_crud import UserCRUD
 from ..serializers.event_serializer import EventSerializer, EventNoteSerializer
-from ..models.user import User
 from ..utils.validations import Validations
 from ..utils.app_state import AppState
 
@@ -22,33 +20,6 @@ class EventController(AbstractController):
         self.serializer = EventSerializer()
         self.app_state = AppState()
         self.note_serializer = EventNoteSerializer()
-
-    # ---------- Helpers ----------
-    def _get_current_user(self) -> User:
-        token = Authentication.load_token()
-        if not token:
-            raise PermissionError("Non authentifié.")
-        payload = Authentication.verify_token(token)
-        me = self.users.get_by_id(int(payload["sub"]))
-        if not me:
-            raise PermissionError("Utilisateur courant introuvable.")
-        return me
-
-    def _ensure_admin(self, me: User) -> None:
-        if not Permission.is_admin(me):
-            raise PermissionError("Accès refusé : administrateur requis.")
-
-    def _ensure_owner_or_admin(self, me: User, owner_id: Optional[int]) -> None:
-        if not (
-            Permission.is_admin(me) or (owner_id is not None and me.id == owner_id)
-        ):
-            raise PermissionError("Accès refusé.")
-
-    def _validate_dates(self, start: datetime, end: datetime) -> None:
-        if not isinstance(start, datetime) or not isinstance(end, datetime):
-            raise ValueError("date_start et date_end doivent être des datetime.")
-        if end <= start:
-            raise ValueError("date_end doit être postérieure à date_start.")
 
     # ---------- Read ----------
     def list_events(
@@ -98,21 +69,6 @@ class EventController(AbstractController):
         me = self._get_current_user()
         # admin -> ok ; support -> restreint à ses événements
         rows = self.events.get_by_contract(contract_id)
-        if not Permission.is_admin(me):
-            rows = [e for e in rows if e.support_contact_id == me.id]
-        ser = self.serializer if fields is None else EventSerializer(fields=fields)
-        return ser.serialize_list(rows)
-
-    def list_by_date_range(
-        self,
-        start_date: datetime,
-        end_date: datetime,
-        *,
-        fields: Optional[List[str]] = None,
-    ) -> List[Dict[str, Any]]:
-        me = self._get_current_user()
-        self._validate_dates(start_date, end_date)
-        rows = self.events.get_by_date_range(start_date, end_date)
         if not Permission.is_admin(me):
             rows = [e for e in rows if e.support_contact_id == me.id]
         ser = self.serializer if fields is None else EventSerializer(fields=fields)
@@ -181,17 +137,17 @@ class EventController(AbstractController):
 
         self._ensure_owner_or_admin(me, ev.support_contact_id)
 
-        # verrou pour champs sensibles si non-admin
+        # verrou pour champs sensibles si non admin
         if not Permission.is_admin(me):
-            forbidden = {"contract_id", "support_contact_id"}
+            forbidden = {"contract_id"}
             data = {k: v for k, v in data.items() if k not in forbidden}
 
         # dates optionnelles
         start = data.get("date_start", ev.date_start)
         end = data.get("date_end", ev.date_end)
-        self._validate_dates(start, end)
+        Validations.validate_date_order(start, end)
 
-        # si admin change contract_id → vérifier existence
+        # si admin change contract_id, vérifie son existence
         if "contract_id" in data and Permission.is_admin(me):
             cid = int(data["contract_id"])
             if not self.contracts.get_by_id(cid):
@@ -200,23 +156,6 @@ class EventController(AbstractController):
         updated = self.events.update(event_id, data)
         if updated is None:
             raise ValueError("Mise à jour impossible.")
-        return self.serializer.serialize(updated)
-
-    # ---------- Assignation ----------
-    def assign_support(self, event_id: int, support_user_id: int) -> Dict[str, Any]:
-        """
-        admin-only : réassigner l'événement à un autre technicien.
-        """
-        me = self._get_current_user()
-        self._ensure_admin(me)
-
-        ev = self.events.get_by_id(event_id)
-        if not ev:
-            raise ValueError("Événement introuvable.")
-
-        updated = self.events.update(event_id, {"support_contact_id": support_user_id})
-        if updated is None:
-            raise ValueError("Assignation impossible.")
         return self.serializer.serialize(updated)
 
     # ---------- Delete ----------

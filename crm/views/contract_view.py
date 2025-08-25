@@ -15,6 +15,7 @@ class ContractView(BaseView):
     def create_contract_flow(self, client_id: int) -> Dict[str, Any]:
         try:
             self._clear_screen()
+            self._print_back_choice()
 
             amount_total = self.get_valid_input("Montant total")
             amount_due = self.get_valid_input("Montant dû")
@@ -64,6 +65,7 @@ class ContractView(BaseView):
         if selector:
             validate_number = Validations.validate_number
             self.console.print("[dim]Sélectionnez un contrat...[/dim]")
+            self._print_back_choice()
             str_contract_id = self.get_valid_input(
                 "ID du contrat",
                 validate=validate_number,
@@ -77,11 +79,11 @@ class ContractView(BaseView):
 
     def update_contract_flow(self, contract_dict: dict) -> tuple[int, dict] | None:
         self._clear_screen()
+        self._print_back_choice()
         try:
             contract_id = contract_dict["id"]
             current_amount_total = contract_dict["amount_total"]
             current_amount_due = contract_dict["amount_due"]
-            current_is_signed = contract_dict["is_signed"]
 
             self.console.print(
                 f"[cyan]Modification du contrat [bold]{contract_id}[/bold][/cyan]\n"
@@ -122,6 +124,7 @@ class ContractView(BaseView):
             self.console.print("[cyan]Ajouter un paiement au contrat[/cyan]\n")
             self.console.print(f"Montant total : {amount_total} €")
             self.console.print(f"Restant dû : {amount_due} €\n")
+            self._print_back_choice()
 
             payment_str = self.get_valid_input(
                 "Montant du paiement",

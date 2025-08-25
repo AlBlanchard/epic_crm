@@ -1,7 +1,5 @@
-from typing import Dict, Any, Optional, List, Tuple
-from decimal import Decimal
+from typing import Dict, Any, Optional, List
 from .base import AbstractController
-from ..auth.auth import Authentication
 from ..auth.permission import Permission
 from ..crud.contract_crud import ContractCRUD
 from ..crud.client_crud import ClientCRUD
@@ -21,35 +19,6 @@ class ContractController(AbstractController):
         self.clients = ClientCRUD(self.session)
         self.users = UserCRUD(self.session)
         self.serializer = ContractSerializer()
-
-    # ---------- Helpers ----------
-    def _get_current_user(self) -> User:
-        token = Authentication.load_token()
-        if not token:
-            raise PermissionError("Non authentifié.")
-        payload = Authentication.verify_token(token)
-        me = self.users.get_by_id(int(payload["sub"]))
-        if not me:
-            raise PermissionError("Utilisateur courant introuvable.")
-        return me
-
-    def _ensure_admin(self, me: User) -> None:
-        if not Permission.is_admin(me):
-            raise PermissionError("Accès refusé : administrateur requis.")
-
-    def _ensure_owner_or_admin(self, me: User, owner_id: int) -> None:
-        if not (Permission.is_admin(me) or me.id == owner_id):
-            raise PermissionError("Accès refusé.")
-
-    def _ensure_sales_owns_client_or_admin(self, me: User, client_id: int) -> None:
-        """Un sales ne peut manipuler que des contrats liés à SES clients."""
-        if Permission.is_admin(me):
-            return
-        client = self.clients.get_by_id(client_id)
-        if not client:
-            raise ValueError("Client introuvable.")
-        if client.sales_contact_id != me.id:
-            raise PermissionError("Vous ne pouvez agir que sur vos propres clients.")
 
     # ---------- Read ----------
     def list_contracts(
@@ -156,24 +125,6 @@ class ContractController(AbstractController):
             raise ValueError("Le contrat n'a pas de commercial assigné.")
 
         return owner
-
-    def list_by_client(
-        self,
-        client_id: int,
-        *,
-        fields: Optional[List[str]] = None,
-    ) -> List[Dict[str, Any]]:
-        me = self._get_current_user()
-        self._ensure_sales_owns_client_or_admin(me, client_id)
-        rows = self.contracts.get_by_client(client_id)
-        ser = self.serializer if fields is None else ContractSerializer(fields=fields)
-        return ser.serialize_list(rows)
-
-    def get_contract_amounts(self, contract_id: int) -> Tuple[Decimal, Decimal]:
-        contract = self.contracts.get_by_id(contract_id)
-        if not contract:
-            raise ValueError("Contrat introuvable.")
-        return contract.amount_total, contract.amount_due
 
     # ---------- Create ----------
     def create_contract(self, data: Dict[str, Any]) -> Dict[str, Any]:

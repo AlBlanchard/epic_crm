@@ -15,6 +15,7 @@ class EventView(BaseView):
     def create_event_flow(self, contract_id: int) -> Dict[str, Any]:
         try:
             self._clear_screen()
+            self._print_back_choice()
 
             event_location = self.get_valid_input("Lieu de l'événement")
             event_attendees = self.get_valid_input(
@@ -77,6 +78,7 @@ class EventView(BaseView):
         if selector:
             validate_number = Validations.validate_number
             self.console.print("[dim]Sélectionnez un event...[/dim]")
+            self._print_back_choice()
             str_event_id = self.get_valid_input(
                 "ID de l'événement",
                 validate=validate_number,
@@ -96,6 +98,8 @@ class EventView(BaseView):
             current_attendees = event["attendees"]
             current_date_start = event["date_start"]
             current_date_end = event["date_end"]
+
+            self._print_back_choice()
 
             location = self.get_valid_input(
                 "Lieu de l'événement", default=current_location
@@ -133,6 +137,7 @@ class EventView(BaseView):
     def add_event_note_flow(self) -> str:
         self._clear_screen()
         self.console.print("[cyan]Ajout d'une note à l'événement[/cyan]")
+        self._print_back_choice()
         note = self.get_valid_input("Entrez votre note", transform=str)
 
         return note

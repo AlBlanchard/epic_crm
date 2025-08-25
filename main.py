@@ -18,6 +18,7 @@ from crm.cli.client_commands import (
     create_client_cmd,
     list_clients_cmd,
     update_client_cmd,
+    update_sales_contact_cmd,
     delete_client_cmd,
 )
 from crm.cli.contract_commands import (
@@ -106,6 +107,7 @@ cli.add_command(remove_user_role_cmd)
 cli.add_command(create_client_cmd)
 cli.add_command(list_clients_cmd)
 cli.add_command(update_client_cmd)
+cli.add_command(update_sales_contact_cmd)
 cli.add_command(delete_client_cmd)
 
 # -- Contracts--

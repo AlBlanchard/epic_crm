@@ -114,7 +114,14 @@ class MenuView(BaseView):
         items = [
             ("Créer un client", lambda: self.cli_utils.invoke(ctx, "create-client")),
             ("Lister les clients", lambda: self.cli_utils.invoke(ctx, "list-clients")),
-            ("Modifier un client", lambda: self.cli_utils.invoke(ctx, "update-client")),
+            (
+                "Modifier les infos d'un client",
+                lambda: self.cli_utils.invoke(ctx, "update-client"),
+            ),
+            (
+                "Assigner/Changer le commercial",
+                lambda: self.cli_utils.invoke(ctx, "update-sales-contact"),
+            ),
             (
                 "Supprimer un client",
                 lambda: self.cli_utils.invoke(ctx, "delete-client"),

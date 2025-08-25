@@ -123,17 +123,3 @@ class ContractCRUD(AbstractBaseCRUD):
         except Exception:
             self.session.rollback()
             raise
-
-    # ---------- UTILITY ----------
-    def exists(self, contract_id: int) -> bool:
-        """Vérifie si un contrat existe."""
-        return self.session.get(Contract, contract_id) is not None
-
-    def count(self, filters: Optional[Dict[str, Any]] = None) -> int:
-        """Compte les contrats avec filtres optionnels."""
-        query = self.session.query(Contract)
-        if filters:
-            for key, value in filters.items():
-                if hasattr(Contract, key):
-                    query = query.filter(getattr(Contract, key) == value)
-        return query.count()

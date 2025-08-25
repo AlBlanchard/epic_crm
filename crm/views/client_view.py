@@ -11,55 +11,10 @@ class ClientView(BaseView):
     def _setup_services(self) -> None:
         self.app_state = AppState()
 
-    @staticmethod
-    def _asdict_client(o: Any) -> Dict[str, Any]:
-        if isinstance(o, dict):
-            return o
-
-        return {
-            "id": getattr(o, "id", ""),
-            "full_name": getattr(o, "full_name", ""),
-            "email": getattr(o, "email", ""),
-            "phone": getattr(o, "phone", ""),
-            "company_name": getattr(o, "company_name", ""),
-            "sales_contact_id": getattr(o, "sales_contact_id", ""),
-            "created_at": getattr(o, "created_at", ""),
-        }
-
-    @staticmethod
-    def attach_sales_name(
-        rows: list[dict], users_name_tuples: list[tuple[int, str]]
-    ) -> list[dict]:
-        """
-        Ajoute à chaque client un champ 'sales_contact' basé sur sales_contact_id
-        en utilisant la liste de tuples (id, username).
-        """
-        id_to_name = {int(uid): uname for uid, uname in users_name_tuples}
-
-        for row in rows:
-            sid = row.get("sales_contact_id")
-            try:
-                sid_int = int(sid) if sid not in (None, "", 0) else None
-            except (ValueError, TypeError):
-                sid_int = None
-
-            if sid_int and sid_int in id_to_name:
-                row["sales_contact"] = id_to_name[sid_int]
-            elif sid_int is None:
-                row["sales_contact"] = "Non assigné"
-            else:
-                row["sales_contact"] = f"#{sid}"  # fallback si id pas trouvé
-
-        for row in rows:
-            for tupple in users_name_tuples:
-                if row["sales_contact_id"] == tupple[0]:
-                    row["sales_contact"] = tupple[1]
-
-        return rows
-
     def create_client_flow(self, sales_contact_id: int) -> Dict[str, Any] | None:
         try:
             self._clear_screen()
+            self._print_back_choice()
 
             full_name = self.get_valid_input("Nom complet")
             email = self.get_valid_input("Email")
@@ -108,6 +63,7 @@ class ClientView(BaseView):
         if selector:
             validate_number = Validations.validate_number
             self.console.print("[dim]Sélectionnez un client...[/dim]")
+            self._print_back_choice()
             str_client_id = self.get_valid_input(
                 "ID du client",
                 validate=validate_number,
@@ -121,6 +77,7 @@ class ClientView(BaseView):
 
     def update_client_flow(self, client_dict: dict) -> tuple[int, dict] | None:
         self._clear_screen()
+        self._print_back_choice()
         try:
             client_id = client_dict["id"]
             current_full_name = client_dict["full_name"]

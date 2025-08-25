@@ -4,6 +4,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from ..database import SessionLocal
 from datetime import datetime
+from ..auth.auth import Authentication
+from ..crud.user_crud import UserCRUD
+from ..models.user import User
+from ..auth.permission import Permission
 
 
 class AbstractController(ABC):
@@ -15,6 +19,7 @@ class AbstractController(ABC):
 
     def __init__(self, session: Optional[Session] = None):
         self.session = session or SessionLocal()
+        self.user_crud = UserCRUD(self.session)
         self._owns_session = session is None
         self._setup_services()
 
@@ -23,19 +28,20 @@ class AbstractController(ABC):
         """Initialise les services/CRUD spécifiques du contrôleur."""
         pass
 
-    def __enter__(self):
-        return self
+    def _get_current_user(self) -> User:
+        token = Authentication.load_token()
+        if not token:
+            raise PermissionError("Non authentifié.")
+        payload = Authentication.verify_token(token)
+        me = self.user_crud.get_by_id(int(payload["sub"]))
+        if not me:
+            raise PermissionError("Utilisateur courant introuvable.")
+        return me
 
-    def __exit__(self, exc_type, exc, tb):
-        if self._owns_session and self.session:
-            self.session.close()
+    def _ensure_admin(self, me: User) -> None:
+        if not Permission.is_admin(me):
+            raise PermissionError("Accès refusé : administrateur requis.")
 
-    def ensure_datetime(self, value):
-        if isinstance(value, datetime):
-            return value
-        if isinstance(value, str):
-            try:
-                return datetime.fromisoformat(value)
-            except ValueError:
-                raise ValueError(f"Impossible de convertir {value!r} en datetime")
-        raise ValueError(f"Type non supporté: {type(value)}")
+    def _ensure_owner_or_admin(self, me: User, owner_id: int) -> None:
+        if not (Permission.is_admin(me) or me.id == owner_id):
+            raise PermissionError("Accès refusé.")
