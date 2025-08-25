@@ -4,8 +4,9 @@ from ..views.view import BaseView
 from getpass import getpass
 from ..errors.exceptions import UserCancelledInput
 from ..utils.app_state import AppState
-from typing import Optional, Iterable, Any, Dict
+from typing import Optional, Iterable, Any, Dict, List
 from ..utils.validations import Validations
+from ..utils.pretty import Pretty
 
 
 class UserView(BaseView):
@@ -174,42 +175,32 @@ class UserView(BaseView):
 
     def list_users(
         self,
-        rows: list[dict],
+        rows: List[Dict[str, Any]],
         selector: bool = False,
         prompt: str = "[dim]Sélectionnez un utilisateur...[/dim]",
-    ) -> int | None:
-        self._clear_screen()
-        rows = [self._asdict_user(r) for r in rows]
-        self._print_table(
-            "[cyan]Utilisateurs[/cyan]",
-            [
-                "id",
-                "username",
-                "email",
-                "employee_number",
-                "roles",
-                "created_at",
-            ],
-            rows,
+    ) -> Optional[int]:
+
+        for row in rows:
+            row["created_at"] = Pretty.pretty_datetime(row["created_at"])
+            row["roles"] = Pretty.pretty_roles(row["roles"])
+            row["email"] = Pretty.pretty_email(row["email"])
+
+        columns = [
+            "id",
+            ("username", "Nom d'utilisateur"),
+            "email",
+            ("employee_number", "N° employé"),
+            ("roles", "Rôles"),
+            ("created_at", "Créé le"),
+        ]
+        return self.list_entities(
+            rows=rows,
+            title="[cyan]Utilisateurs[/cyan]",
+            columns=columns,
+            selector=selector,
+            entity="utilisateur",
+            prompt=prompt,
         )
-
-        if selector:
-            validate_number = Validations.validate_number
-            self.console.print(prompt)
-            self._print_back_choice()
-            str_user_id = self.get_valid_input(
-                "ID de l'utilisateur",
-                validate=validate_number,
-                list_to_compare=[str(u["id"]) for u in rows],
-            )
-
-            user_id = int(str_user_id)
-
-            return user_id
-
-        self.console.print("\n[dim]Appuyez sur Entrée pour revenir au menu...[/dim]")
-        self.app_state.display_error_or_success_message()
-        self.console.input()
 
     def update_user_infos_flow(self, user_dict: dict) -> tuple[int, dict] | None:
         self._clear_screen()

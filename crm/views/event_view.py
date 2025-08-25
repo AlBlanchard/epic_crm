@@ -2,9 +2,9 @@ from ..views.view import BaseView
 from ..utils.app_state import AppState
 from ..database import SessionLocal
 from ..errors.exceptions import UserCancelledInput
-from typing import Any, Dict, List
+from typing import Any, Dict
 from ..utils.validations import Validations
-from decimal import Decimal
+from ..utils.pretty import Pretty
 
 
 class EventView(BaseView):
@@ -56,39 +56,29 @@ class EventView(BaseView):
         self._clear_screen()
 
         for row in rows:
-            row["date_start"] = self.pretty_datetime(row["date_start"])
-            row["date_end"] = self.pretty_datetime(row["date_end"])
+            row["date_start"] = Pretty.pretty_datetime(row["date_start"])
+            row["date_end"] = Pretty.pretty_datetime(row["date_end"])
+            row["client_contact"] = Pretty.pretty_contact(row["client_contact"])
+            row["notes"] = Pretty.pretty_notes(row["notes"])
 
-        self._print_table(
-            "[cyan]Evénements[/cyan]",
-            [
-                "id",
-                "client_name",
-                "client_contact",
-                "date_start",
-                "date_end",
-                "support_contact_name",
-                "location",
-                "attendees",
-                "notes",
-            ],
-            rows,
+        columns = [
+            "id",
+            ("client_name", "Client"),
+            ("client_contact", "Contact du Client"),
+            ("date_start", "Début"),
+            ("date_end", "Fin"),
+            ("support_contact_name", "Support"),
+            ("location", "Lieu"),
+            ("attendees", "Nbr d'invités"),
+            ("notes", "Notes"),
+        ]
+        return self.list_entities(
+            rows=rows,
+            title="[cyan]Evénements[/cyan]",
+            columns=columns,
+            selector=selector,
+            entity="événement",
         )
-
-        if selector:
-            validate_number = Validations.validate_number
-            self.console.print("[dim]Sélectionnez un event...[/dim]")
-            self._print_back_choice()
-            str_event_id = self.get_valid_input(
-                "ID de l'événement",
-                validate=validate_number,
-                list_to_compare=[str(u["id"]) for u in rows],
-            )
-            return int(str_event_id)
-
-        self.console.print("\n[dim]Appuyez sur Entrée pour revenir au menu...[/dim]")
-        self.app_state.display_error_or_success_message()
-        self.console.input()
 
     def update_event_flow(self, event: dict) -> Dict[str, Any]:
         try:

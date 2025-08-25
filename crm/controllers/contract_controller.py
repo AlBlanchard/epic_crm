@@ -1,4 +1,4 @@
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 from .base import AbstractController
 from ..auth.permission import Permission
 from ..crud.contract_crud import ContractCRUD
@@ -9,6 +9,7 @@ from ..models.user import User
 from ..models.client import Client
 from ..models.contract import Contract
 from sqlalchemy.orm import selectinload
+from decimal import Decimal
 
 
 class ContractController(AbstractController):
@@ -125,6 +126,13 @@ class ContractController(AbstractController):
             raise ValueError("Le contrat n'a pas de commercial assigné.")
 
         return owner
+
+    def get_contract_amounts(self, contract_id: int) -> Tuple[Decimal, Decimal]:
+        contract = self.contracts.get_by_id(contract_id)
+        if not contract:
+            raise ValueError("Contrat introuvable.")
+
+        return Decimal(contract.amount_total), Decimal(contract.amount_due)
 
     # ---------- Create ----------
     def create_contract(self, data: Dict[str, Any]) -> Dict[str, Any]:

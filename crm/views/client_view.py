@@ -2,8 +2,9 @@ from ..views.view import BaseView
 from ..utils.app_state import AppState
 from ..database import SessionLocal
 from ..errors.exceptions import UserCancelledInput
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 from ..utils.validations import Validations
+from ..utils.pretty import Pretty
 
 
 class ClientView(BaseView):
@@ -42,38 +43,28 @@ class ClientView(BaseView):
 
     def list_clients(
         self,
-        rows: list[dict],
+        rows: List[Dict[str, Any]],
         selector: bool = False,
-    ) -> int | None:
-        self._clear_screen()
+    ) -> Optional[int]:
 
-        self._print_table(
-            "[cyan]Clients[/cyan]",
-            [
-                "id",
-                "full_name",
-                "email",
-                "phone",
-                "company_name",
-                "sales_contact_name",
-            ],
-            rows,
+        for row in rows:
+            row["email"] = Pretty.pretty_email(row["email"])
+
+        columns = [
+            "id",
+            ("full_name", "Nom du client"),
+            "email",
+            ("phone", "Téléphone"),
+            ("company_name", "Société"),
+            ("sales_contact_name", "Contact commercial"),
+        ]
+        return self.list_entities(
+            rows=rows,
+            title="[cyan]Clients[/cyan]",
+            columns=columns,
+            selector=selector,
+            entity="client",
         )
-
-        if selector:
-            validate_number = Validations.validate_number
-            self.console.print("[dim]Sélectionnez un client...[/dim]")
-            self._print_back_choice()
-            str_client_id = self.get_valid_input(
-                "ID du client",
-                validate=validate_number,
-                list_to_compare=[str(u["id"]) for u in rows],
-            )
-            return int(str_client_id)
-
-        self.console.print("\n[dim]Appuyez sur Entrée pour revenir au menu...[/dim]")
-        self.app_state.display_error_or_success_message()
-        self.console.input()
 
     def update_client_flow(self, client_dict: dict) -> tuple[int, dict] | None:
         self._clear_screen()

@@ -2,8 +2,9 @@ from ..views.view import BaseView
 from ..utils.app_state import AppState
 from ..database import SessionLocal
 from ..errors.exceptions import UserCancelledInput
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 from ..utils.validations import Validations
+from ..utils.pretty import Pretty
 from decimal import Decimal
 
 
@@ -42,40 +43,34 @@ class ContractView(BaseView):
 
     def list_contracts(
         self,
-        rows: list[dict],
+        rows: List[Dict[str, Any]],
         selector: bool = False,
-    ) -> int | None:
-        self._clear_screen()
+    ) -> Optional[int]:
 
-        self._print_table(
-            "[cyan]Contrats[/cyan]",
-            [
-                "id",
-                "client_name",
-                "amount_total",
-                "amount_due",
-                "is_signed",
-                "sales_contact_name",
-                "created_at",
-                "updated_at",
-            ],
-            rows,
+        for row in rows:
+            row["created_at"] = Pretty.pretty_datetime(row["created_at"])
+            row["updated_at"] = Pretty.pretty_datetime(row["updated_at"])
+            row["amount_total"] = Pretty.pretty_currency(row["amount_total"])
+            row["amount_due"] = Pretty.pretty_currency(row["amount_due"], debt=True)
+            row["is_signed"] = Pretty.pretty_bool(row["is_signed"])
+
+        columns = [
+            "id",
+            ("client_name", "Client"),
+            ("amount_total", "Total"),
+            ("amount_due", "Restant dû"),
+            ("is_signed", "Signé ?"),
+            ("sales_contact_name", "Commercial"),
+            ("created_at", "Créé le"),
+            ("updated_at", "Modifié le"),
+        ]
+        return self.list_entities(
+            rows=rows,
+            title="[cyan]Contrats[/cyan]",
+            columns=columns,
+            selector=selector,
+            entity="contrat",
         )
-
-        if selector:
-            validate_number = Validations.validate_number
-            self.console.print("[dim]Sélectionnez un contrat...[/dim]")
-            self._print_back_choice()
-            str_contract_id = self.get_valid_input(
-                "ID du contrat",
-                validate=validate_number,
-                list_to_compare=[str(u["id"]) for u in rows],
-            )
-            return int(str_contract_id)
-
-        self.console.print("\n[dim]Appuyez sur Entrée pour revenir au menu...[/dim]")
-        self.app_state.display_error_or_success_message()
-        self.console.input()
 
     def update_contract_flow(self, contract_dict: dict) -> tuple[int, dict] | None:
         self._clear_screen()

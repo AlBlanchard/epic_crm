@@ -2,9 +2,19 @@ import sys
 import click
 import platform
 import os
-import calendar
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterable, List, Optional, Callable, TypeVar
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Callable,
+    TypeVar,
+    Mapping,
+    Union,
+    Tuple,
+)
 from sqlalchemy.orm import Session
 from ..database import SessionLocal
 from rich.table import Table
@@ -12,9 +22,11 @@ from rich.console import Console
 from ..errors.exceptions import UserCancelledInput
 from ..utils.app_state import AppState
 from ..utils.validations import Validations
+from ..utils.pretty import Pretty
 from getpass import getpass
 from datetime import datetime
 
+ColumnSpec = Union[str, Tuple[str, str]]
 
 # Type variable pour des types génériques
 # Permet de dire "n'importe quel type en entrée mais ce sera le même type en sortie"
@@ -52,15 +64,33 @@ class BaseView(ABC):
         )
 
     def _print_table(
-        self, title: str, columns: List[str], rows: List[Dict[str, Any]]
+        self, title: str, columns: List[ColumnSpec], rows: List[Dict[str, Any]]
     ) -> None:
+        """
+        columns:
+        - "client_name"  -> header "client_name"
+        - ("client_name", "Client") -> header "Client"
+        """
         table = Table(title=title)
+
+        # Prépare key, header pour toutes les colonnes
+        normalized: List[Tuple[str, str]] = []
         for col in columns:
-            table.add_column(col, overflow="fold")
+            if isinstance(col, tuple):
+                key, header = col
+            else:
+                key, header = col, col
+            normalized.append((key, header))
+            table.add_column(header, overflow="fold")
+
         for r in rows:
-            table.add_row(*[str(r.get(c, "")) for c in columns])
+            table.add_row(*[str(r.get(key, "")) for key, _ in normalized])
+
         self.console.print(table)
 
+    # ---------- Input ----------
+    # Cette grosse methode permet de recuperer une entree utilisateur valide
+    # Pas mal de paramètre pour gérer les différentes situations
     @staticmethod
     def get_valid_input(
         prompt: str,
@@ -174,6 +204,8 @@ class BaseView(ABC):
         self.session.close()
         sys.exit(0)
 
+    # ---------- Date Input --------
+    # Afin de renseigner une date facilement
     @staticmethod
     def get_date_input(
         title: str = "Saisir une date", default: datetime | None = None
@@ -186,7 +218,7 @@ class BaseView(ABC):
 
         if default:
             dt = datetime.fromisoformat(str(default))
-            default_date_str = BaseView.pretty_datetime(dt)
+            default_date_str = Pretty.pretty_datetime(dt)
             console.print(
                 f"[dim]Date actuelle: [bold green]{default_date_str}[/bold green][/dim]"
             )
@@ -227,14 +259,88 @@ class BaseView(ABC):
 
         return dt
 
-    @staticmethod
-    def pretty_datetime(dt: datetime | str) -> str:
-        if isinstance(dt, str):
-            dt = datetime.fromisoformat(dt)
+    # ---------- Tables ----------
+    def select_id(
+        self,
+        *,
+        rows: Iterable[Mapping],
+        entity: str,
+        intro: Optional[str] = None,
+        id_label: Optional[str] = None,
+    ) -> Optional[int]:
+        """
+        Sous fonction pour sélectionner un ID parmi les rows d'un tableau.
 
-        day = dt.day
-        month_name = dt.strftime("%B")  # Nom du mois en anglais
-        year = dt.year
-        hour12 = dt.strftime("%I").lstrip("0")  # Heure en 12h, sans zéro devant
-        ampm = dt.strftime("%p")  # AM ou PM
-        return f"{day} {month_name} {year} @ {hour12}{ampm}"
+        Params
+        ------
+        rows : Iterable[Mapping]
+            Les éléments affichés ailleurs (on ne les affiche pas ici), chacun doit avoir 'id'.
+        entity : str
+            Nom de l'entité pour le texte (ex: 'utilisateur', 'client', 'contrat', 'événement').
+        intro : Optional[str]
+            Ligne d'introduction au-dessus du prompt (ex: "[dim]Sélectionnez un client...[/dim]").
+            Défaut: f"[dim]Sélectionnez un {entity}...[/dim]"
+        id_label : Optional[str]
+            Libellé du champ d'entrée (ex: "ID du client").
+            Défaut: f"ID du {entity}"
+
+        Returns
+        -------
+        Optional[int]
+            L'ID saisi (int). Retourne None si `selector` est False.
+        """
+        validate_number = Validations.validate_number
+
+        # Texte d'intro
+        line = intro if intro is not None else f"[dim]Sélectionnez un {entity}...[/dim]"
+        self.console.print(line)
+        self._print_back_choice()
+
+        # Construit la liste des ids autorisés (tout en str)
+        try:
+            allowed_ids = [str(item["id"]) for item in rows]
+        except Exception:
+            # Si jamais 'rows' contient des objets avec attribut .id plutôt que des dicts
+            allowed_ids = [str(getattr(item, "id")) for item in rows]
+
+        # Libellé du champ
+        label = id_label if id_label is not None else f"ID du {entity}"
+
+        # Lecture sécurisée + validation + appartenance à la liste
+        str_id = self.get_valid_input(
+            label,
+            validate=validate_number,
+            list_to_compare=allowed_ids,
+        )
+
+        return int(str_id)
+
+    def list_entities(
+        self,
+        *,
+        rows: List[Dict[str, Any]],
+        title: str,
+        columns: List[ColumnSpec],
+        selector: bool = False,
+        entity: Optional[str] = None,  # "utilisateur", "client", etc...
+        prompt: Optional[str] = None,  # ex: "[dim]Sélectionnez un utilisateur...[/dim]"
+    ) -> Optional[int]:
+        """
+        Affiche un tableau générique avec entêtes custom et gère la sélection d'ID facultative.
+        - `columns` accepte "key" ou ("key", "Header")
+        - aucune transformation/formatage ici : prépare `rows` en amont si nécessaire.
+        """
+        self._clear_screen()
+
+        self._print_table(title, columns, rows)
+
+        if selector:
+            ent = entity or "élément"
+            pr = prompt or f"[dim]Sélectionnez un {ent}...[/dim]"
+            selected_id = self.select_id(rows=rows, entity=ent, intro=pr)
+            return selected_id
+
+        self.console.print("\n[dim]Appuyez sur Entrée pour revenir au menu...[/dim]")
+        AppState.display_error_or_success_message()
+        self.console.input()
+        return None
