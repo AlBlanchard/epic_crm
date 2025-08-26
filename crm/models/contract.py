@@ -1,5 +1,3 @@
-from argon2 import PasswordHasher
-
 from sqlalchemy import (
     Integer,
     ForeignKey,
@@ -7,10 +5,16 @@ from sqlalchemy import (
     Boolean,
     Integer,
 )
-from sqlalchemy.orm import relationship, validates, Mapped, mapped_column
-from sqlalchemy import CheckConstraint
+from sqlalchemy.orm import relationship, validates, Mapped, mapped_column, aliased
+from sqlalchemy import CheckConstraint, case
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.sql import select
+
+
 from .base import AbstractBase
 from decimal import Decimal
+from ..models.client import Client
+from ..models.user import User
 
 
 class Contract(AbstractBase):
@@ -30,17 +34,45 @@ class Contract(AbstractBase):
     client = relationship("Client", back_populates="contracts")
     event = relationship("Event", back_populates="contract", uselist=False)
 
-    @property
-    def client_name(self):
+    # Type ignore car l'IDE ne comprend pas qu'ils doivent avoir le même nom
+    @hybrid_property
+    def client_name(self):  # type: ignore
         return self.client.full_name
 
-    @property
-    def sales_contact_name(self):
+    @client_name.expression
+    def client_name(cls):
+        return (
+            select(Client.full_name)
+            .where(Client.id == cls.client_id)
+            .correlate(cls)
+            .scalar_subquery()
+        )
+
+    @hybrid_property
+    def sales_contact_name(self):  # type: ignore
         return (
             self.client.sales_contact.username
             if self.client.sales_contact
             else "Aucun contact"
         )
+
+    @sales_contact_name.expression
+    def sales_contact_name(cls):
+        ClientAlias = aliased(Client)
+        return (
+            select(User.username)
+            .join(ClientAlias, ClientAlias.sales_contact_id == User.id)
+            .where(ClientAlias.id == cls.client_id)
+            .scalar_subquery()
+        )
+
+    @hybrid_property
+    def is_payed(self):  # type: ignore
+        return self.amount_due == 0
+
+    @is_payed.expression
+    def is_payed(cls):
+        return case({cls.amount_due == 0: True}, else_=False).label("is_payed")
 
     def __repr__(self) -> str:
         return f"<Contract(id={self.id}, total={self.amount_total}, signed={self.is_signed})>"

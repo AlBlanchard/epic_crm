@@ -7,8 +7,12 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
 )
-from sqlalchemy.orm import relationship, validates, Mapped, mapped_column
+from sqlalchemy.orm import relationship, validates, Mapped, mapped_column, aliased
 from sqlalchemy import CheckConstraint
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.sql import select
+from sqlalchemy import CheckConstraint, case
+from ..models.user import User
 
 from .base import AbstractBase
 
@@ -37,10 +41,31 @@ class Event(AbstractBase):
     contract = relationship("Contract", back_populates="event")
     support_contact = relationship("User", back_populates="events")
 
-    @property
-    def support_contact_name(self):
+    # Type ignore car l'IDE ne comprend pas qu'ils doivent avoir le même nom
+    @hybrid_property
+    def support_contact_name(self):  # type: ignore
         return (
             self.support_contact.username if self.support_contact else "Aucun contact"
+        )
+
+    @support_contact_name.expression
+    def support_contact_name(cls):
+        UserAlias = aliased(User)
+        return (
+            select(User.username)
+            .join(UserAlias, UserAlias.id == User.id)
+            .where(UserAlias.id == cls.support_contact_id)
+            .scalar_subquery()
+        )
+
+    @hybrid_property
+    def is_assigned(self):  # type: ignore
+        return self.support_contact is not None
+
+    @is_assigned.expression
+    def is_assigned(cls):
+        return case({cls.support_contact_id != None: True}, else_=False).label(
+            "is_assigned"
         )
 
     def __repr__(self) -> str:

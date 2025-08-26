@@ -1,17 +1,13 @@
 import click
 from ..controllers.user_controller import UserController
 from ..controllers.contract_controller import ContractController
-from ..controllers.client_controller import ClientController
 from ..controllers.event_controller import EventController
 from ..views.contract_view import ContractView
-from ..views.client_view import ClientView
 from ..views.user_view import UserView
 from ..views.event_view import EventView
 from ..database import SessionLocal
 from ..auth.permission import Permission
-from ..auth.permission_config import Crud
-from ..errors.exceptions import UserCancelledInput
-from decimal import Decimal
+from .filter_commands import filter_cmd
 
 
 @click.command(name="create-event")
@@ -58,7 +54,7 @@ def create_event_cmd(ctx: click.Context, contract_id: int) -> None:
             raise PermissionError("Accès refusé.")
 
         # Liste pour selectionner le contrat à modifier
-        selected_id = contract_view.list_contracts(rows, selector=True)
+        selected_id = contract_view.list_all(rows, selector=True)
         if selected_id is None:
             return
         contract_id = selected_id
@@ -91,8 +87,11 @@ def list_events_cmd(ctx: click.Context) -> None:
     )
 
     try:
-        rows = ctrl.list_events()
-        view.list_events(rows)
+        rows = ctrl.list_all()
+        want_filter = view.list_all(rows, has_filter=True)
+
+        if want_filter:
+            ctx.invoke(filter_cmd, entity="events")
     except Exception as e:
         if view.app_state:
             view.app_state.set_error_message(str(e))
@@ -118,13 +117,13 @@ def update_event_cmd(ctx: click.Context, event_id: int) -> None:
 
     if not event_id:
         if Permission.update_permission(me, "event"):
-            rows = ctrl.list_events()
+            rows = ctrl.list_all()
         elif Permission.update_own_permission(me, "event"):
             rows = ctrl.list_my_events()
         else:
             raise PermissionError("Accès refusé.")
 
-        selected_id = view.list_events(rows, selector=True)
+        selected_id = view.list_all(rows, selector=True)
         if selected_id is None:
             return
         event_id = selected_id
@@ -164,13 +163,13 @@ def add_event_note_cmd(ctx: click.Context, event_id: int) -> None:
 
     if not event_id:
         if Permission.update_permission(me, "event"):
-            rows = ctrl.list_events()
+            rows = ctrl.list_all()
         elif Permission.update_own_permission(me, "event"):
             rows = ctrl.list_my_events()
         else:
             raise PermissionError("Accès refusé.")
 
-        selected_id = view.list_events(rows, selector=True)
+        selected_id = view.list_all(rows, selector=True)
         if selected_id is None:
             return
         event_id = selected_id
@@ -209,13 +208,13 @@ def delete_note_cmd(ctx: click.Context, event_id: int) -> None:
 
     if not event_id:
         if Permission.update_permission(me, "event"):
-            rows = ctrl.list_events()
+            rows = ctrl.list_all()
         elif Permission.update_own_permission(me, "event"):
             rows = ctrl.list_my_events()
         else:
             raise PermissionError("Accès refusé.")
 
-        selected_id = view.list_events(rows, selector=True)
+        selected_id = view.list_all(rows, selector=True)
         if selected_id is None:
             return
         event_id = selected_id
@@ -265,13 +264,13 @@ def update_support_cmd(
 
     if not event_id:
         if Permission.update_permission(me, "event"):
-            rows = ctrl.list_events()
+            rows = ctrl.list_all()
         elif Permission.update_own_permission(me, "event"):
             rows = ctrl.list_my_events()
         else:
             raise PermissionError("Accès refusé.")
 
-        selected_id = view.list_events(rows, selector=True)
+        selected_id = view.list_all(rows, selector=True)
         if selected_id is None:
             return
         event_id = selected_id
@@ -318,13 +317,13 @@ def delete_event_cmd(ctx: click.Context, event_id: int | None = None) -> None:
 
     if not event_id:
         if Permission.delete_permission(me, "event"):
-            rows = ctrl.list_events()
+            rows = ctrl.list_all()
         elif Permission.delete_own_permission(me, "event"):
             rows = ctrl.list_my_events()
         else:
             raise PermissionError("Accès refusé.")
 
-        selected_id = view.list_events(rows, selector=True)
+        selected_id = view.list_all(rows, selector=True)
         if selected_id is None:
             return
         event_id = selected_id

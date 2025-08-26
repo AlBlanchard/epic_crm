@@ -51,17 +51,12 @@ class UserCRUD(AbstractBaseCRUD):
         self,
         filters: Optional[Dict[str, Any]] = None,
         order_by: Optional[str] = None,
-        *,
-        limit: Optional[int] = None,
-        offset: int = 0,
     ) -> List[User]:
         """Récupère tous les utilisateurs avec filtres et tri optionnels."""
         return self.get_entities(
             User,
             filters=filters,
             order_by=order_by,
-            limit=limit,
-            offset=offset,
             eager_options=(
                 # anti N+2
                 selectinload(User.user_roles).selectinload(UserRole.role),

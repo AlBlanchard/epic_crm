@@ -33,17 +33,12 @@ class ContractCRUD(AbstractBaseCRUD):
         self,
         filters: Optional[Dict[str, Any]] = None,
         order_by: Optional[str] = None,
-        *,
-        limit: Optional[int] = None,
-        offset: int = 0,
     ) -> List[Contract]:
         """Récupère tous les contrats avec filtres/tri et eager-load anti-N+1."""
         return self.get_entities(
             Contract,
             filters=filters,
             order_by=order_by,
-            limit=limit,
-            offset=offset,
             eager_options=(
                 # N+1
                 selectinload(Contract.client),

@@ -88,6 +88,15 @@ class BaseView(ABC):
 
         self.console.print(table)
 
+    def true_or_false(self, prompt: str) -> bool:
+        response = input(f"{prompt} (o/n) : ").strip().lower()
+        if response == "o":
+            return True
+        elif response == "n":
+            return False
+        else:
+            raise ValueError("Réponse invalide. Veuillez répondre par 'o' ou 'n'.")
+
     # ---------- Input ----------
     # Cette grosse methode permet de recuperer une entree utilisateur valide
     # Pas mal de paramètre pour gérer les différentes situations
@@ -322,9 +331,10 @@ class BaseView(ABC):
         title: str,
         columns: List[ColumnSpec],
         selector: bool = False,
+        has_filter: bool = False,
         entity: Optional[str] = None,  # "utilisateur", "client", etc...
         prompt: Optional[str] = None,  # ex: "[dim]Sélectionnez un utilisateur...[/dim]"
-    ) -> Optional[int]:
+    ) -> Optional[int | bool]:
         """
         Affiche un tableau générique avec entêtes custom et gère la sélection d'ID facultative.
         - `columns` accepte "key" ou ("key", "Header")
@@ -339,6 +349,9 @@ class BaseView(ABC):
             pr = prompt or f"[dim]Sélectionnez un {ent}...[/dim]"
             selected_id = self.select_id(rows=rows, entity=ent, intro=pr)
             return selected_id
+
+        if has_filter:
+            return self.true_or_false("Souhaitez vous appliquer un filtre ?")
 
         self.console.print("\n[dim]Appuyez sur Entrée pour revenir au menu...[/dim]")
         AppState.display_error_or_success_message()

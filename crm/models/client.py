@@ -1,7 +1,19 @@
 import re
 
-from sqlalchemy import Integer, String, ForeignKey, Integer, CheckConstraint
+from sqlalchemy import (
+    Integer,
+    String,
+    ForeignKey,
+    Integer,
+    CheckConstraint,
+    case,
+)
 from sqlalchemy.orm import relationship, validates, Mapped, mapped_column
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.sql import select
+
+from crm.models.user import User
+
 from .base import AbstractBase
 
 
@@ -22,9 +34,30 @@ class Client(AbstractBase):
     sales_contact = relationship("User", back_populates="clients")
     contracts = relationship("Contract", back_populates="client")
 
-    @property
-    def sales_contact_name(self):
+    # Permet de faire des recherches SQL sur des champs propriétés (filtre, etc...)
+    # Doit garder le même nom que l'expression ci-dessous, ignore sinon l'IDE râle.
+    @hybrid_property
+    def sales_contact_name(self):  # type: ignore
         return self.sales_contact.username if self.sales_contact else "Aucun contact"
+
+    @sales_contact_name.expression
+    def sales_contact_name(cls):
+        return (
+            select(User.username)
+            .where(User.id == cls.sales_contact_id)
+            .correlate(cls)
+            .scalar_subquery()
+        )
+
+    @hybrid_property
+    def is_assigned(self):  # type: ignore
+        return self.sales_contact is not None
+
+    @is_assigned.expression
+    def is_assigned(cls):
+        return case({cls.sales_contact_id != None: True}, else_=False).label(
+            "is_assigned"
+        )
 
     def __repr__(self) -> str:
         return f"<Client(id={self.id}, name='{self.full_name}')>"

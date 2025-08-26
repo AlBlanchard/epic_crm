@@ -22,7 +22,7 @@ class ContractController(AbstractController):
         self.serializer = ContractSerializer()
 
     # ---------- Read ----------
-    def list_contracts(
+    def list_all(
         self,
         *,
         filters: Optional[Dict[str, Any]] = None,

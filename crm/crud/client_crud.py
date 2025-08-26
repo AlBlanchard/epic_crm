@@ -37,9 +37,6 @@ class ClientCRUD(AbstractBaseCRUD):
         self,
         filters: Optional[Dict[str, Any]] = None,
         order_by: Optional[str] = None,
-        *,
-        limit: Optional[int] = None,
-        offset: int = 0,
     ) -> List[Client]:
         """Récupère tous les clients avec filtres et tri optionnels, anti-N+1 activé."""
         return self.get_entities(
@@ -47,8 +44,6 @@ class ClientCRUD(AbstractBaseCRUD):
             filters=filters,
             order_by=order_by,
             eager_options=(selectinload(Client.sales_contact),),  # clé anti N+1
-            limit=limit,
-            offset=offset,
         )
 
     def get_by_id(self, client_id: int) -> Optional[Client]:

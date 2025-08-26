@@ -41,10 +41,11 @@ class ContractView(BaseView):
                 self.app_state.set_error_message(str(e))
             return {}
 
-    def list_contracts(
+    def list_all(
         self,
         rows: List[Dict[str, Any]],
         selector: bool = False,
+        has_filter: bool = False,
     ) -> Optional[int]:
 
         for row in rows:
@@ -70,6 +71,7 @@ class ContractView(BaseView):
             columns=columns,
             selector=selector,
             entity="contrat",
+            has_filter=has_filter,
         )
 
     def update_contract_flow(self, contract_dict: dict) -> tuple[int, dict] | None:

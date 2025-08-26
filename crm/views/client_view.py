@@ -41,10 +41,11 @@ class ClientView(BaseView):
             else:
                 self.app_state.set_error_message(str(e))
 
-    def list_clients(
+    def list_all(
         self,
         rows: List[Dict[str, Any]],
         selector: bool = False,
+        has_filter: bool = False,
     ) -> Optional[int]:
 
         for row in rows:
@@ -64,6 +65,7 @@ class ClientView(BaseView):
             columns=columns,
             selector=selector,
             entity="client",
+            has_filter=has_filter,
         )
 
     def update_client_flow(self, client_dict: dict) -> tuple[int, dict] | None:

@@ -5,7 +5,7 @@ from ..views.client_view import ClientView
 from ..views.user_view import UserView
 from ..database import SessionLocal
 from ..auth.permission import Permission
-from ..auth.permission_config import Crud
+from .filter_commands import filter_cmd
 
 
 @click.command(name="create-client")
@@ -54,8 +54,15 @@ def list_clients_cmd(ctx: click.Context) -> None:
         session=SessionLocal()
     )
 
-    rows = ctrl.list_clients()
-    view.list_clients(rows)
+    try:
+        rows = ctrl.list_all()
+        want_filter = view.list_all(rows, has_filter=True)
+
+        if want_filter:
+            ctx.invoke(filter_cmd, entity="clients")
+    except Exception as e:
+        if view.app_state:
+            view.app_state.set_error_message(str(e))
 
 
 @click.command(name="update-client")
@@ -78,7 +85,7 @@ def update_client_cmd(ctx: click.Context, client_id: int) -> None:
     if not client_id:
         # Peut il tout update ? On liste tous les clients
         if Permission.update_permission(me, "client"):
-            rows = ctrl.list_clients()
+            rows = ctrl.list_all()
         # Peut il seulement update ses propres clients ? On liste ses propres clients
         elif Permission.update_own_permission(me, "client"):
             rows = ctrl.list_my_clients()
@@ -86,7 +93,7 @@ def update_client_cmd(ctx: click.Context, client_id: int) -> None:
             raise PermissionError("Accès refusé.")
 
         # Liste pour selectionner le client à modifier
-        selected_id = view.list_clients(rows, selector=True)
+        selected_id = view.list_all(rows, selector=True)
         if selected_id is None:
             return
         client_id = selected_id
@@ -146,8 +153,8 @@ def update_sales_contact_cmd(
         raise PermissionError("Accès refusé.")
 
     if not client_id:
-        rows = ctrl.list_clients()
-        selected_id = view.list_clients(rows, selector=True)
+        rows = ctrl.list_all()
+        selected_id = view.list_all(rows, selector=True)
         if selected_id is None:
             return
         client_id = selected_id
@@ -195,8 +202,8 @@ def delete_client_cmd(ctx: click.Context, client_id: int) -> None:
         raise PermissionError("Accès refusé.")
 
     if not client_id:
-        rows = ctrl.list_clients()
-        selected_id = view.list_clients(rows, selector=True)
+        rows = ctrl.list_all()
+        selected_id = view.list_all(rows, selector=True)
         if selected_id is None:
             return
         client_id = selected_id

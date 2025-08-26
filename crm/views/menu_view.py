@@ -53,7 +53,7 @@ class MenuView(BaseView):
         """
         while True:
             self._clear_screen()
-            self.console.print(f"\n[bold cyan]— {title} —[/bold cyan]")
+            self.console.print(f"\n[bold cyan]{title}[/bold cyan]")
 
             # affichage des entrées numérotées
             for i, (label, _) in enumerate(items, start=1):
@@ -108,7 +108,7 @@ class MenuView(BaseView):
             ("Utilisateurs", lambda: self._menu_users(ctx)),
         ]
 
-        self.run_menu(ctx, "=== CRM — Menu principal ===", items, logout=True)
+        self.run_menu(ctx, "=== CRM - Menu principal ===", items, logout=True)
 
     def _menu_clients(self, ctx: click.Context) -> None:
         items = [
@@ -170,7 +170,7 @@ class MenuView(BaseView):
                 lambda: self.cli_utils.invoke(ctx, "delete-event"),
             ),
         ]
-        self.run_menu(ctx, "Evénements", items)
+        self.run_menu(ctx, "-- Evénements --", items)
 
     def _menu_users(self, ctx: click.Context) -> None:
         items = [

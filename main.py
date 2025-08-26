@@ -37,6 +37,8 @@ from crm.cli.event_commands import (
     update_support_cmd,
     delete_event_cmd,
 )
+from crm.cli.filter_commands import filter_cmd
+
 from crm.utils.app_state import AppState
 
 
@@ -125,6 +127,9 @@ cli.add_command(add_event_note_cmd)
 cli.add_command(delete_note_cmd)
 cli.add_command(update_support_cmd)
 cli.add_command(delete_event_cmd)
+
+# -- Filtres --
+cli.add_command(filter_cmd)
 
 
 if __name__ == "__main__":

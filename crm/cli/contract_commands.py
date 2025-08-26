@@ -9,6 +9,7 @@ from ..auth.permission import Permission
 from ..auth.permission_config import Crud
 from ..errors.exceptions import UserCancelledInput
 from decimal import Decimal
+from .filter_commands import filter_cmd
 
 
 @click.command(name="create-contract")
@@ -41,8 +42,8 @@ def create_contract_cmd(ctx: click.Context, client_id: int) -> None:
 
     # Sélection du client à qui sera attaché le contrat
     if not client_id:
-        rows = client_ctrl.list_clients()
-        selected_id = client_view.list_clients(rows, selector=True)
+        rows = client_ctrl.list_all()
+        selected_id = client_view.list_all(rows, selector=True)
         if selected_id is None:
             return
         client_id = selected_id
@@ -74,8 +75,11 @@ def list_contracts_cmd(ctx: click.Context) -> None:
         session=SessionLocal()
     )
 
-    rows = ctrl.list_contracts()
-    view.list_contracts(rows)
+    rows = ctrl.list_all()
+    want_filter = view.list_all(rows, has_filter=True)
+
+    if want_filter:
+        ctx.invoke(filter_cmd, entity="contracts")
 
 
 @click.command(name="sign-contract")
@@ -106,7 +110,7 @@ def sign_contract_cmd(ctx: click.Context, contract_id: int) -> None:
             raise PermissionError("Accès refusé.")
 
         # Liste pour selectionner le contrat à modifier
-        selected_id = view.list_contracts(rows, selector=True)
+        selected_id = view.list_all(rows, selector=True)
         if selected_id is None:
             return
         contract_id = selected_id
@@ -161,13 +165,13 @@ def update_contract_amount_cmd(
 
     if not contract_id:
         if Permission.update_permission(me, "contract"):
-            rows = ctrl.list_contracts()
+            rows = ctrl.list_all()
         elif Permission.update_own_permission(me, "contract"):
             rows = ctrl.list_my_contracts()
         else:
             raise PermissionError("Accès refusé.")
 
-        selected_id = view.list_contracts(rows, selector=True)
+        selected_id = view.list_all(rows, selector=True)
         if selected_id is None:
             return
         contract_id = selected_id
@@ -213,13 +217,13 @@ def delete_contract_cmd(ctx: click.Context, contract_id: int) -> None:
 
     if not contract_id:
         if Permission.delete_permission(me, "contract"):
-            rows = ctrl.list_contracts()
+            rows = ctrl.list_all()
         elif Permission.delete_own_permission(me, "contract"):
             rows = ctrl.list_my_contracts()
         else:
             raise PermissionError("Accès refusé.")
 
-        selected_id = view.list_contracts(rows, selector=True)
+        selected_id = view.list_all(rows, selector=True)
         if selected_id is None:
             return
         contract_id = selected_id

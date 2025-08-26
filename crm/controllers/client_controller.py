@@ -15,7 +15,7 @@ class ClientController(AbstractController):
         self.serializer = ClientSerializer()
 
     # ---------- Read ----------
-    def list_clients(
+    def list_all(
         self,
         *,
         filters: Optional[Dict[str, Any]] = None,

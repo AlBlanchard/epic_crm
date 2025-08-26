@@ -48,10 +48,8 @@ class EventView(BaseView):
                 self.app_state.set_error_message(str(e))
             return {}
 
-    def list_events(
-        self,
-        rows: list[dict],
-        selector: bool = False,
+    def list_all(
+        self, rows: list[dict], selector: bool = False, has_filter: bool = False
     ) -> int | None:
         self._clear_screen()
 
@@ -78,6 +76,7 @@ class EventView(BaseView):
             columns=columns,
             selector=selector,
             entity="événement",
+            has_filter=has_filter,
         )
 
     def update_event_flow(self, event: dict) -> Dict[str, Any]:

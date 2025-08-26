@@ -18,8 +18,6 @@ class AbstractBaseCRUD(ABC):
         order_by: Optional[str] = None,
         *,
         eager_options: Sequence = (),  # ex : (selectinload(Client.sales_contact),)
-        limit: Optional[int] = None,
-        offset: int = 0,
     ) -> List:
         """Récupère des entités avec filtres/tri simples + eager-load optionnel."""
         query: Query = self.session.query(model)
@@ -38,7 +36,7 @@ class AbstractBaseCRUD(ABC):
         # Autres filtres (égalité simple)
         if filters:
             for field, value in filters.items():
-                if field in columns:
+                if hasattr(model, field):
                     query = query.filter(getattr(model, field) == value)
 
         # Tri: "field" (asc) ou "-field" (desc)

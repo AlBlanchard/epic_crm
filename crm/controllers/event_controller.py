@@ -22,7 +22,8 @@ class EventController(AbstractController):
         self.note_serializer = EventNoteSerializer()
 
     # ---------- Read ----------
-    def list_events(
+
+    def list_all(
         self,
         *,
         filters: Optional[Dict[str, Any]] = None,
