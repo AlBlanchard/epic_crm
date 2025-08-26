@@ -8,6 +8,7 @@ from ..auth.auth import Authentication
 from ..crud.user_crud import UserCRUD
 from ..models.user import User
 from ..auth.permission import Permission
+from ..utils.validations import Validations
 
 
 class AbstractController(ABC):
@@ -20,6 +21,7 @@ class AbstractController(ABC):
     def __init__(self, session: Optional[Session] = None):
         self.session = session or SessionLocal()
         self.user_crud = UserCRUD(self.session)
+        self.valid = Validations()
         self._owns_session = session is None
         self._setup_services()
 

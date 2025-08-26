@@ -39,12 +39,8 @@ class AbstractBaseCRUD(ABC):
                 if hasattr(model, field):
                     query = query.filter(getattr(model, field) == value)
 
-        # Tri: "field" (asc) ou "-field" (desc)
+        # Pas implémenté car non demandé, peut soulever un pb de sécurité si mal géré
         if order_by:
-            desc = order_by.startswith("-")
-            key = order_by[1:] if desc else order_by
-            if key in columns:
-                col = getattr(model, key)
-                query = query.order_by(col.desc() if desc else col.asc())
+            raise ValueError("Le tri n'est pas encore implémenté.")
 
         return query.all()

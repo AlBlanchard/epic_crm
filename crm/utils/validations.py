@@ -1,20 +1,18 @@
 import calendar
+import re
+from decimal import Decimal, InvalidOperation
 from typing import Iterable, TypeVar
 from datetime import datetime
 
 
 class Validations:
+    EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
+    PHONE_REGEX = r"^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$"
 
     @staticmethod
     def validate_user_id(user_id: str, valid_ids: list[str]) -> bool:
         if user_id not in valid_ids:
             raise ValueError("ID utilisateur invalide.")
-        return True
-
-    @staticmethod
-    def validate_email(email: str) -> bool:
-        if "@" not in email:
-            raise ValueError("Email invalide.")
         return True
 
     @staticmethod
@@ -89,3 +87,69 @@ class Validations:
             raise ValueError(
                 f"La date de fin ({end_date}) doit être postérieure à la date de début ({start_date})."
             )
+
+    @staticmethod
+    def validate_str_max_length(value: str, max_length: int = 100) -> None:
+        """Vérifie que la chaîne ne dépasse pas une longueur maximale."""
+        if value is not None and isinstance(value, str):
+            if len(value) > max_length:
+                raise ValueError(
+                    f"La chaîne ne doit pas dépasser {max_length} caractères."
+                )
+        else:
+            raise ValueError("La valeur doit être une chaîne.")
+
+    @staticmethod
+    def validate_email(email: str) -> None:
+        """Vérifie que l'email est valide."""
+        Validations.validate_str_max_length(email, max_length=254)
+        if not Validations.EMAIL_REGEX.match(email):
+            raise ValueError("Email invalide.")
+
+    @staticmethod
+    def validate_int_max_length(value: int | str | None, max_length: int = 10) -> None:
+        """Vérifie que l'entier ne dépasse pas une longueur maximale."""
+        if value is None:
+            raise ValueError("La valeur ne peut pas être nulle.")
+        try:
+            int_value = int(value)
+        except (ValueError, TypeError):
+            raise ValueError("La valeur doit être un entier.")
+
+        if not isinstance(int_value, int):
+            raise ValueError("La valeur doit être un entier.")
+        if int_value > 10**max_length - 1:
+            raise ValueError(f"L'entier ne doit pas dépasser {max_length} chiffres.")
+
+    @staticmethod
+    def validate_phone(phone: str) -> None:
+        if len(phone) > 15:
+            raise ValueError(
+                "Le numéro de téléphone ne doit pas dépasser 15 caractères."
+            )
+        if phone and not re.match(Validations.PHONE_REGEX, phone):
+            raise ValueError("Le numéro de téléphone est invalide.")
+
+    @staticmethod
+    def validate_currency(value) -> None:
+        """
+        Vérifie que la valeur est un nombre avec au maximum 2 décimales.
+        Retourne un Decimal si OK, lève ValueError sinon.
+        """
+        try:
+            d = Decimal(str(value))
+        except (InvalidOperation, ValueError):
+            raise ValueError(f"Valeur invalide pour une devise : {value}")
+
+        if d != d.quantize(Decimal("0.01")):
+            raise ValueError(f"Le montant {value} doit avoir au maximum 2 décimales.")
+
+    @staticmethod
+    def validate_positive_integer(value: int | str, max_length: int = 6) -> None:
+        try:
+            int_value = int(value)
+        except Exception as e:
+            raise ValueError("La valeur doit être un entier.")
+        if int_value <= 0:
+            raise ValueError("La valeur doit être un entier positif.")
+        Validations.validate_int_max_length(int_value, max_length)

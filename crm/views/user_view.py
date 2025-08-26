@@ -146,9 +146,15 @@ class UserView(BaseView):
             self._clear_screen()
             self._print_back_choice()
 
-            username = self.get_valid_input("Nom d'utilisateur")
-            email = self.get_valid_input("Email")
-            employee_number = self.get_valid_input("Numéro d'employé", transform=int)
+            username = self.get_valid_input(
+                "Nom d'utilisateur", validate=self.valid.validate_str_max_length
+            )
+            email = self.get_valid_input("Email", validate=self.valid.validate_email)
+            employee_number = self.get_valid_input(
+                "Numéro d'employé",
+                transform=int,
+                validate=self.valid.validate_int_max_length,
+            )
             password = self.get_valid_password("Mot de passe : ")
 
             with SessionLocal() as session:
@@ -214,12 +220,21 @@ class UserView(BaseView):
                 f"\n[bold]Modification de l'utilisateur #{user_id}[/bold]"
             )
             self._print_back_choice()
-            username = self.get_valid_input(f"Nouveau nom", default=current_username)
-            email = self.get_valid_input(f"Nouvel email", default=current_email)
+            username = self.get_valid_input(
+                f"Nouveau nom",
+                default=current_username,
+                validate=self.valid.validate_str_max_length,
+            )
+            email = self.get_valid_input(
+                f"Nouvel email",
+                default=current_email,
+                validate=self.valid.validate_email,
+            )
             employee_number = self.get_valid_input(
                 f"Nouveau numéro d'employé",
                 default=current_employee_number,
                 transform=lambda s: int(s) if s.strip() else None,
+                validate=self.valid.validate_int_max_length,
             )
 
             payload: dict = {

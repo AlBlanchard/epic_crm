@@ -15,6 +15,7 @@ ENTITY_TO_CONTROLLER = {
     "events": EventController,
 }
 
+# Permet également de protéger contre les attaques SQL
 AUTHORIZED_FILTERS = {
     "clients": [
         {
@@ -67,6 +68,11 @@ class FilterController(AbstractController):
         if entity is None or entity not in ENTITY_TO_CONTROLLER:
             raise ValueError("Entité invalide.")
 
+        # Vérifie les champs de filtre autorisés
+        authorized_fields = {f["field"] for f in AUTHORIZED_FILTERS.get(entity, [])}
+        for field in filters.keys():
+            if field not in authorized_fields:
+                raise ValueError(f"Champ de filtre non autorisé : {field}")
         try:
             controller = self.controllers[entity]
             return controller.list_all(filters=filters)

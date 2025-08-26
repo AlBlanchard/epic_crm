@@ -1,5 +1,6 @@
 from typing import Any, Dict, List, Iterable, Optional
-from crm.models.contract import Contract
+from ..models.contract import Contract
+from ..utils.validations import Validations
 
 
 class ContractSerializer:
@@ -25,8 +26,10 @@ class ContractSerializer:
             self.fields = set(self.PUBLIC_FIELDS) | set(
                 self.COMPUTED_FIELDS.keys()
             )  # Initialise les deux fields
+            self.valid = Validations()
         else:
             self.fields = set(fields)
+            self.valid = Validations()
 
     @staticmethod
     def _to_iso(v: Any) -> Any:
@@ -48,6 +51,12 @@ class ContractSerializer:
         # Champs calculés
         for name, getter in self.COMPUTED_FIELDS.items():
             if name in self.fields:
+                # Validations
+                if name == "amount_total":
+                    self.valid.validate_currency(getattr(contract, name))
+                if name == "amount_due":
+                    self.valid.validate_currency(getattr(contract, name))
+
                 try:
                     value = getter(contract)
                 except Exception as e:

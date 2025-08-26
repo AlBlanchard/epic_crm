@@ -17,9 +17,16 @@ class EventView(BaseView):
             self._clear_screen()
             self._print_back_choice()
 
-            event_location = self.get_valid_input("Lieu de l'événement")
+            event_location = self.get_valid_input(
+                "Lieu de l'événement",
+                validate=lambda v: self.valid.validate_str_max_length(
+                    str(v), max_length=300
+                ),
+            )
             event_attendees = self.get_valid_input(
-                "Nombre de participants", transform=int
+                "Nombre de participants",
+                validate=self.valid.validate_positive_integer,
+                transform=int,
             )
 
             event_start_date = self.get_date_input("Date de l'événement")

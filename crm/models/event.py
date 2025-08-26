@@ -7,12 +7,20 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
 )
-from sqlalchemy.orm import relationship, validates, Mapped, mapped_column, aliased
+from sqlalchemy.orm import (
+    relationship,
+    validates,
+    Mapped,
+    mapped_column,
+    aliased,
+    validates,
+)
 from sqlalchemy import CheckConstraint
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.sql import select
 from sqlalchemy import CheckConstraint, case
 from ..models.user import User
+from ..utils.validations import Validations
 
 from .base import AbstractBase
 
@@ -32,7 +40,7 @@ class Event(AbstractBase):
 
     date_start: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False)
     date_end: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False)
-    location: Mapped[str] = mapped_column(String(255))
+    location: Mapped[str] = mapped_column(String(300))
     attendees: Mapped[int] = mapped_column(Integer)
 
     notes = relationship(
@@ -93,6 +101,8 @@ class Event(AbstractBase):
     def validate_attendees(self, key, value):
         if not isinstance(value, int):
             raise ValueError(f"{key} must be an integer")
+
+        Validations.validate_positive_integer(value)
 
         if value <= 0:
             raise ValueError(f"{key} cannot be negative or zero")

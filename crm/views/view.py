@@ -41,6 +41,7 @@ class BaseView(ABC):
         self._owns_session = session is None
         self._setup_services()
         self.console = console or Console()
+        self.valid = Validations()
 
     @abstractmethod
     def _setup_services(self) -> None:
@@ -71,7 +72,7 @@ class BaseView(ABC):
         - "client_name"  -> header "client_name"
         - ("client_name", "Client") -> header "Client"
         """
-        table = Table(title=title)
+        table = Table(title=title, show_lines=True)
 
         # Prépare key, header pour toutes les colonnes
         normalized: List[Tuple[str, str]] = []

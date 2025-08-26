@@ -18,8 +18,14 @@ class ContractView(BaseView):
             self._clear_screen()
             self._print_back_choice()
 
-            amount_total = self.get_valid_input("Montant total")
-            amount_due = self.get_valid_input("Montant dû")
+            amount_total = self.get_valid_input(
+                "Montant total",
+                validate=Validations.validate_currency,
+            )
+            amount_due = self.get_valid_input(
+                "Montant dû",
+                validate=Validations.validate_currency,
+            )
             is_signed = Validations.confirm_action("Contrat signé ?")
 
             with SessionLocal() as session:
@@ -27,8 +33,8 @@ class ContractView(BaseView):
 
                 payload: dict = {
                     "client_id": client_id,
-                    "amount_total": float(amount_total),
-                    "amount_due": float(amount_due),
+                    "amount_total": Decimal(amount_total),
+                    "amount_due": Decimal(amount_due),
                     "is_signed": is_signed,
                 }
 
@@ -89,18 +95,22 @@ class ContractView(BaseView):
             amount_total = self.get_valid_input(
                 "Montant total",
                 default=str(current_amount_total),
+                validate=Validations.validate_currency,
+                transform=Decimal,
             )
             amount_due = self.get_valid_input(
                 "Montant dû",
                 default=str(current_amount_due),
+                validate=Validations.validate_currency,
+                transform=Decimal,
             )
 
             with SessionLocal() as session:
                 self.console.print("[dim]Mise à jour du contrat...[/dim]")
 
                 payload: dict = {
-                    "amount_total": float(amount_total),
-                    "amount_due": float(amount_due),
+                    "amount_total": Decimal(amount_total),
+                    "amount_due": Decimal(amount_due),
                 }
 
             return contract_id, payload

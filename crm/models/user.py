@@ -6,7 +6,7 @@ from sqlalchemy import (
     String,
     Integer,
 )
-from sqlalchemy.orm import relationship, Session, Mapped, mapped_column
+from sqlalchemy.orm import relationship, Session, Mapped, mapped_column, validates
 from .base import AbstractBase
 from .role import Role
 from .user_role import UserRole
@@ -22,8 +22,8 @@ class User(AbstractBase):
     __tablename__ = "users"
 
     employee_number: Mapped[int] = mapped_column(Integer, unique=True, nullable=False)
-    username: Mapped[str] = mapped_column(String, nullable=False, unique=True)
-    email: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    username: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    email: Mapped[str] = mapped_column(String(254), nullable=False, unique=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
 
     # Relation many-tomany via la table d'association user_roles
@@ -33,6 +33,12 @@ class User(AbstractBase):
 
     clients = relationship("Client", back_populates="sales_contact")
     events = relationship("Event", back_populates="support_contact")
+
+    @validates("employee_number")
+    def validate_employee_number(self, key, value):
+        if not (0 <= value <= 9_999_999_999):
+            raise ValueError("employee_number doit contenir maximum 10 chiffres")
+        return value
 
     @property
     def roles(self):

@@ -17,10 +17,19 @@ class ClientView(BaseView):
             self._clear_screen()
             self._print_back_choice()
 
-            full_name = self.get_valid_input("Nom complet")
-            email = self.get_valid_input("Email")
-            phone = self.get_valid_input("Téléphone")
-            company_name = self.get_valid_input("Nom de l'entreprise")
+            full_name = self.get_valid_input(
+                "Nom complet", validate=self.valid.validate_str_max_length
+            )
+            email = self.get_valid_input("Email", validate=self.valid.validate_email)
+            phone = self.get_valid_input(
+                "Téléphone", validate=self.valid.validate_phone
+            )
+            company_name = self.get_valid_input(
+                "Nom de l'entreprise",
+                validate=lambda v: self.valid.validate_str_max_length(
+                    str(v), max_length=200
+                ),
+            )
 
             with SessionLocal() as session:
                 self.console.print("[dim]Création du client...[/dim]")
@@ -78,11 +87,23 @@ class ClientView(BaseView):
             current_phone = client_dict["phone"]
             current_company_name = client_dict["company_name"]
 
-            full_name = self.get_valid_input("Nom complet", default=current_full_name)
-            email = self.get_valid_input("Email", default=current_email)
-            phone = self.get_valid_input("Téléphone", default=current_phone)
+            full_name = self.get_valid_input(
+                "Nom complet",
+                default=current_full_name,
+                validate=self.valid.validate_str_max_length,
+            )
+            email = self.get_valid_input(
+                "Email", default=current_email, validate=self.valid.validate_email
+            )
+            phone = self.get_valid_input(
+                "Téléphone", default=current_phone, validate=self.valid.validate_phone
+            )
             company_name = self.get_valid_input(
-                "Nom de l'entreprise", default=current_company_name
+                "Nom de l'entreprise",
+                default=current_company_name,
+                validate=lambda v: self.valid.validate_str_max_length(
+                    str(v), max_length=200
+                ),
             )
 
             payload: dict = {
