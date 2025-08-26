@@ -52,6 +52,19 @@ pip install -r requirements.txt
 Crée un fichier **.env** à la racine (non versionné) :
 
 ```dotenv
+
+DB_USER=epic_crm_user
+DB_PASSWORD=<votre mdp>
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=epic_crm
+
+JWT_SECRET_KEY=<votre clée secrète>
+JWT_ALGORITHM=<algo des JWT, par ex. HS256, HS384, HS512>
+JWT_ACCESS_TOKEN_EXPIRES=<durée en h (ex: 3h)>
+
+JWT_REFRESH_TOKEN_EXPIRES=<durée en d (ex: 10d)>
+
 # Sentry (facultatif mais recommandé)
 SENTRY_DSN= https://<public_key>@sentry.io/<project_id>
 SENTRY_ENV= dev
