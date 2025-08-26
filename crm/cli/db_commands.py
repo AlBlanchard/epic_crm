@@ -1,4 +1,5 @@
 import click
+import sys
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import inspect
 from crm.database import Base, engine, SessionLocal
@@ -8,6 +9,8 @@ from ..models.client import Client  # Import nécessaire pour la création des t
 from ..models.contract import Contract  # Import nécessaire pour la création des tables
 from ..models.event import Event  # Import nécessaire pour la création des tables
 from sqlalchemy import text
+from ..auth.permission import Permission
+from ..controllers.user_controller import UserController
 
 
 @click.group(name="db-cli")
@@ -69,52 +72,71 @@ def _create_initial_data():
             click.echo(f"Erreur lors de la création des données : {e}")
 
 
-@db_cli.command("init")
-@click.option(
-    "--force", is_flag=True, help="Force l'initialisation même si la DB existe"
-)
-def init_db(force):
+def _terminate_other_sessions(conn):
+    # tue toutes les sessions de la base courante sauf la nôtre
+    conn.execute(
+        text(
+            """
+        SELECT pg_terminate_backend(pid)
+        FROM pg_stat_activity
+        WHERE datname = current_database()
+        AND pid <> pg_backend_pid();
+    """
+        )
+    )
+
+
+@click.command("init")
+@click.pass_context
+def init_db(ctx: click.Context):
     """Initialise la base de données."""
 
     # Vérification si la base existe déjà
-    if _database_exists() and not force:
+    if _database_exists():
         click.echo("")
         click.echo("-- ! Une base de données existe déjà ! --")
         click.echo("")
         click.echo("Pour réinitialiser complètement la base de données, utilisez :")
-        click.echo("-> db-cli reset")
+        click.echo("-> db-cli reset-hard")
         click.echo("")
         return
 
     _create_initial_data()
 
 
-@db_cli.command("reset")
-def reset_db():
-    """Réinitialise la base de données et crée les rôles + un admin par défaut."""
-    confirm = click.confirm(
-        "Cette opération va supprimer et recréer toute la base, c'est irréversible. Continuer ?",
-        default=False,
-    )
-    if not confirm:
-        click.echo("Opération annulée.")
-        return
-
-    # Drop puis recrée toutes les tables
-    click.echo("Suppression de la base de données...")
-    Base.metadata.drop_all(bind=engine)
-
-    _create_initial_data()
-
-
-@db_cli.command("reset-hard")
+@click.command("reset-hard")
 @click.confirmation_option(
     prompt="Détruire le schéma public (DROP SCHEMA public CASCADE) puis le recréer ?"
 )
-def reset_hard():
-    with engine.begin() as conn:
-        conn.execute(text("DROP SCHEMA public CASCADE"))
-        conn.execute(text("CREATE SCHEMA public"))
+@click.pass_context
+def reset_hard(ctx: click.Context):
+
+    ctrl: UserController = ctx.obj.get("user_controller") or UserController(
+        session=SessionLocal()
+    )
+
+    me = ctrl._get_current_user()
+    if not Permission.is_admin(me):
+        sys.exit("Accès refusé.")
+
+    engine.dispose()
+
+    # Exécute le nuke (BOOM)
+    with engine.connect() as raw:
+        raw = raw.execution_options(isolation_level="AUTOCOMMIT")
+        raw.execute(text("SET lock_timeout = '3s'"))
+        raw.execute(text("SET statement_timeout = '30s'"))
+
+        # tuer les autres connexions au DB
+        _terminate_other_sessions(raw)
+
+        # drop/recreate schéma
+        raw.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
+        raw.execute(text("CREATE SCHEMA public"))
+        raw.execute(text("SET search_path TO public"))
+
+    # Et la DB renait de ses cendres...
     Base.metadata.create_all(bind=engine)
     _create_initial_data()
+
     click.secho("Reset hard terminé", fg="green")

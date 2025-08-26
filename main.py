@@ -3,6 +3,7 @@ from rich.console import Console
 
 from crm.views.auth_view import AuthView
 from crm.views.menu_view import menu_cmd
+from crm.cli.db_commands import init_db, reset_hard
 from crm.cli.auth_commands import login_cmd, logout_cmd
 from crm.cli.user_commands import (
     create_user_cmd,
@@ -95,14 +96,16 @@ def _bind_auth(ctx: click.Context):
     return ctx
 
 
+# Commandes DB
+cli.add_command(init_db)
+cli.add_command(reset_hard)
+
 # Commandes d'auth (méthodes Click sur l'instance)
-cli.add_command(login_cmd)  # accès via: cli login
-cli.add_command(logout_cmd)  # accès via: cli logout
+cli.add_command(login_cmd)
+cli.add_command(logout_cmd)
 
 # Menu principal (fonction Click indépendante)
-cli.add_command(menu_cmd)  # accès via: cli menu
-
-# Autres commandes réutilisables depuis le menu ou en direct
+cli.add_command(menu_cmd)
 
 # -- Users--
 cli.add_command(create_user_cmd)
