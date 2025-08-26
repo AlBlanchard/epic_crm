@@ -7,6 +7,7 @@ from ..database import SessionLocal
 from ..utils.validations import Validations
 from ..errors.exceptions import UserCancelledInput
 from ..auth.permission import Permission
+from ..auth.auth import Authentication
 
 
 @click.command(name="create-user")
@@ -45,7 +46,7 @@ def create_user_cmd(ctx: click.Context) -> None:
 
 @click.command(name="list-users")
 @click.pass_context
-def list_users_cmd(ctx: click.Context) -> None:
+def list_users_cmd(ctx: click.Context, user_id: int | None) -> None:
     # On réutilise la vue attachée au contexte si dispo, sinon on en crée une
     view: UserView = (
         ctx.obj.get("user_view")
@@ -57,7 +58,7 @@ def list_users_cmd(ctx: click.Context) -> None:
         session=SessionLocal()
     )
 
-    rows = ctrl.get_all_users()
+    rows = ctrl.get_all_users(filters={"id": user_id} if user_id else None)
     view.list_users(rows, selector=False)
 
 
@@ -170,6 +171,21 @@ def update_user_password_cmd(ctx: click.Context, user_id: int | None) -> None:
     if not Permission.update_permission(me, "user"):
         raise PermissionError("Accès refusé.")
 
+    # Vérifie que l'utilisateur cible est lui même afin de pouvoir changer son mdp
+    if Permission.update_permission(me, "user", owner_id=user_id):
+        view._clear_screen()
+        view._print_back_choice()
+        password = click.prompt("Ancien mot de passe", hide_input=True)
+        try:
+            if not Authentication.verify_password(password, me.password_hash):
+                raise ValueError("Mot de passe incorrect.")
+        except Exception as e:
+            view.app_state.set_error_message(str(e))
+            return
+    else:
+        raise PermissionError("Accès refusé.")
+
+    UserView._clear_screen()
     new_pwd = view.update_user_password_flow()
     if new_pwd is None:
         return

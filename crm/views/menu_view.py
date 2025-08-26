@@ -102,6 +102,7 @@ class MenuView(BaseView):
 
     def run(self, ctx: click.Context) -> None:
         items = [
+            ("Mon profil", lambda: self._menu_profile(ctx)),
             ("Clients", lambda: self._menu_clients(ctx)),
             ("Contrats", lambda: self._menu_contracts(ctx)),
             ("Événements", lambda: self._menu_events(ctx)),
@@ -109,6 +110,23 @@ class MenuView(BaseView):
         ]
 
         self.run_menu(ctx, "=== CRM - Menu principal ===", items, logout=True)
+
+    def _menu_profile(self, ctx: click.Context) -> None:
+        me = self.user_ctrl._get_current_user()
+        items = [
+            (
+                "Voir mon profil",
+                lambda: self.cli_utils.invoke(ctx, "list-users", user_id=me.id),
+            ),
+            (
+                "Changer mon mot de passe",
+                lambda: self.cli_utils.invoke(
+                    ctx, "update-user-password", user_id=me.id
+                ),
+            ),
+        ]
+
+        self.run_menu(ctx, "-- Mon profil --", items, logout=False)
 
     def _menu_clients(self, ctx: click.Context) -> None:
         items = [
