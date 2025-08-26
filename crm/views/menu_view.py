@@ -10,6 +10,8 @@ from ..controllers.event_controller import EventController
 from ..controllers.user_controller import UserController
 from ..utils.app_state import AppState
 from ..utils.cli_utils import CliUtils
+from ..auth.permission import Permission
+from ..auth.permission_config import Crud
 
 
 class MenuView(BaseView):
@@ -38,6 +40,25 @@ class MenuView(BaseView):
         self.user_ctrl = UserController()
         self.app_state = AppState()
         self.cli_utils = CliUtils()
+
+    def _filter_items_by_permissions(
+        self,
+        user,
+        items: list[tuple[str, Callable, list, str]],
+    ) -> list[tuple[str, Callable]]:
+        """
+        Filtre les items de menu selon les permissions de l'utilisateur.
+        - items: liste de (label, action, [Crud operations], resource)
+        Retourne une liste réduite [(label, action), ...]
+        """
+        allowed = []
+        for label, action, ops, resource in items:
+            # Si l'utilisateur a au moins une des opérations autorisées
+            if any(
+                Permission.has_permission(user, resource=resource, op=op) for op in ops
+            ):
+                allowed.append((label, action))
+        return allowed
 
     def run_menu(
         self,
@@ -101,93 +122,180 @@ class MenuView(BaseView):
                 self.app_state.set_error_message(str(e))
 
     def run(self, ctx: click.Context) -> None:
-        items = [
-            ("Mon profil", lambda: self._menu_profile(ctx)),
-            ("Clients", lambda: self._menu_clients(ctx)),
-            ("Contrats", lambda: self._menu_contracts(ctx)),
-            ("Événements", lambda: self._menu_events(ctx)),
-            ("Utilisateurs", lambda: self._menu_users(ctx)),
+        raw_items = [
+            (
+                "Mon profil",
+                lambda: self._menu_profile(ctx),
+                [Crud.READ, Crud.READ_OWN],
+                "user",
+            ),
+            ("Clients", lambda: self._menu_clients(ctx), [Crud.READ], "client"),
+            ("Contrats", lambda: self._menu_contracts(ctx), [Crud.READ], "contract"),
+            ("Événements", lambda: self._menu_events(ctx), [Crud.READ], "event"),
+            (
+                "Utilisateurs",
+                lambda: self._menu_users(ctx),
+                [Crud.READ],
+                "user",
+            ),
         ]
+
+        user = self.user_ctrl._get_current_user()
+        items = self._filter_items_by_permissions(user, raw_items)
 
         self.run_menu(ctx, "=== CRM - Menu principal ===", items, logout=True)
 
     def _menu_profile(self, ctx: click.Context) -> None:
         me = self.user_ctrl._get_current_user()
-        items = [
+        raw_items = [
             (
                 "Voir mon profil",
                 lambda: self.cli_utils.invoke(ctx, "list-users", user_id=me.id),
+                [Crud.READ, Crud.READ_OWN],
+                "user",
             ),
             (
                 "Changer mon mot de passe",
                 lambda: self.cli_utils.invoke(
                     ctx, "update-user-password", user_id=me.id
                 ),
+                [Crud.UPDATE_OWN],
+                "user",
             ),
         ]
+
+        user = self.user_ctrl._get_current_user()
+        items = self._filter_items_by_permissions(user, raw_items)
 
         self.run_menu(ctx, "-- Mon profil --", items, logout=False)
 
     def _menu_clients(self, ctx: click.Context) -> None:
-        items = [
-            ("Créer un client", lambda: self.cli_utils.invoke(ctx, "create-client")),
-            ("Lister les clients", lambda: self.cli_utils.invoke(ctx, "list-clients")),
+        raw_items = [
+            (
+                "Créer un client",
+                lambda: self.cli_utils.invoke(ctx, "create-client"),
+                [Crud.CREATE],
+                "client",
+            ),
+            (
+                "Lister les clients",
+                lambda: self.cli_utils.invoke(ctx, "list-clients"),
+                [Crud.READ],
+                "client",
+            ),
             (
                 "Modifier les infos d'un client",
                 lambda: self.cli_utils.invoke(ctx, "update-client"),
+                [Crud.UPDATE, Crud.UPDATE_OWN],
+                "client",
             ),
             (
                 "Assigner/Changer le commercial",
                 lambda: self.cli_utils.invoke(ctx, "update-sales-contact"),
+                [Crud.ONLY_ADMIN],
+                "client",
             ),
             (
                 "Supprimer un client",
                 lambda: self.cli_utils.invoke(ctx, "delete-client"),
+                [Crud.ONLY_ADMIN],
+                "client",
             ),
         ]
+
+        user = self.user_ctrl._get_current_user()
+        items = self._filter_items_by_permissions(user, raw_items)
+
         self.run_menu(ctx, "-- Clients --", items)
 
     def _menu_contracts(self, ctx: click.Context) -> None:
-        items = [
-            ("Créer un contrat", lambda: self.cli_utils.invoke(ctx, "create-contract")),
+        raw_items = [
+            (
+                "Créer un contrat",
+                lambda: self.cli_utils.invoke(ctx, "create-contract"),
+                [Crud.CREATE],
+                "contract",
+            ),
             (
                 "Lister les contrats",
                 lambda: self.cli_utils.invoke(ctx, "list-contracts"),
+                [Crud.READ],
+                "contract",
             ),
-            ("Signer un contrat", lambda: self.cli_utils.invoke(ctx, "sign-contract")),
+            (
+                "Signer un contrat",
+                lambda: self.cli_utils.invoke(ctx, "sign-contract"),
+                [Crud.UPDATE, Crud.UPDATE_OWN],
+                "contract",
+            ),
             (
                 "Enregistrer un paiement",
                 lambda: self.cli_utils.invoke(ctx, "update-contract-amount"),
+                [Crud.UPDATE, Crud.UPDATE_OWN],
+                "contract",
             ),
             (
                 "Supprimer un contrat",
                 lambda: self.cli_utils.invoke(ctx, "delete-contract"),
+                [Crud.DELETE],
+                "contract",
             ),
         ]
+
+        user = self.user_ctrl._get_current_user()
+        items = self._filter_items_by_permissions(user, raw_items)
+
         self.run_menu(ctx, "-- Contrats --", items)
 
     def _menu_events(self, ctx: click.Context) -> None:
-        items = [
-            ("Créer un événement", lambda: self.cli_utils.invoke(ctx, "create-event")),
+        raw_items = [
+            (
+                "Créer un événement",
+                lambda: self.cli_utils.invoke(ctx, "create-event"),
+                [Crud.CREATE],
+                "event",
+            ),
             (
                 "Lister les événements",
                 lambda: self.cli_utils.invoke(ctx, "list-events"),
+                [Crud.READ],
+                "event",
             ),
             (
                 "Modifier un événement",
                 lambda: self.cli_utils.invoke(ctx, "update-event"),
+                [Crud.UPDATE, Crud.UPDATE_OWN],
+                "event",
             ),
-            ("Ajouter une note", lambda: self.cli_utils.invoke(ctx, "add-event-note")),
-            ("Retirer une note", lambda: self.cli_utils.invoke(ctx, "delete-note")),
+            (
+                "Ajouter une note",
+                lambda: self.cli_utils.invoke(ctx, "add-event-note"),
+                [Crud.UPDATE, Crud.UPDATE_OWN],
+                "event",
+            ),
+            (
+                "Retirer une note",
+                lambda: self.cli_utils.invoke(ctx, "delete-note"),
+                [Crud.UPDATE, Crud.UPDATE_OWN],
+                "event",
+            ),
             (
                 "Assigner le support",
                 lambda: self.cli_utils.invoke(ctx, "update-support"),
+                [Crud.UPDATE, Crud.UPDATE_OWN],
+                "event",
             ),
             (
                 "Supprimer un événement",
                 lambda: self.cli_utils.invoke(ctx, "delete-event"),
+                [Crud.DELETE],
+                "event",
             ),
         ]
+
+        user = self.user_ctrl._get_current_user()
+        items = self._filter_items_by_permissions(user, raw_items)
+
         self.run_menu(ctx, "-- Evénements --", items)
 
     def _menu_users(self, ctx: click.Context) -> None:

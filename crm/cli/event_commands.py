@@ -112,8 +112,10 @@ def update_event_cmd(ctx: click.Context, event_id: int) -> None:
     )
 
     me = ctrl._get_current_user()
-    if not Permission.update_permission(me, "event", event_id):
-        raise PermissionError("Accès refusé.")
+
+    if event_id:
+        if not Permission.update_permission(me, "event", event_id):
+            raise PermissionError("Accès refusé.")
 
     if not event_id:
         if Permission.update_permission(me, "event"):

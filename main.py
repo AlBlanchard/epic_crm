@@ -37,9 +37,19 @@ from crm.cli.event_commands import (
     update_support_cmd,
     delete_event_cmd,
 )
+from crm.utils.sentry_config import (
+    init_sentry,
+    install_global_exception_hook,
+    get_audit_logger,
+    audit_breadcrumb,
+    audit_event,
+)
 from crm.cli.filter_commands import filter_cmd
-
 from crm.utils.app_state import AppState
+
+init_sentry()
+install_global_exception_hook()
+logger = get_audit_logger()
 
 
 @click.group(invoke_without_command=True)

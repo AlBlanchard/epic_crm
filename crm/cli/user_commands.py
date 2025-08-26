@@ -8,10 +8,12 @@ from ..utils.validations import Validations
 from ..errors.exceptions import UserCancelledInput
 from ..auth.permission import Permission
 from ..auth.auth import Authentication
+from ..utils.audit_decorators import audit_command
 
 
 @click.command(name="create-user")
 @click.pass_context
+@audit_command(category="user", action="create", event_level_on_success="info")
 def create_user_cmd(ctx: click.Context) -> None:
     # On réutilise la vue attachée au contexte si dispo, sinon on en crée une
     view: UserView = (
@@ -46,7 +48,7 @@ def create_user_cmd(ctx: click.Context) -> None:
 
 @click.command(name="list-users")
 @click.pass_context
-def list_users_cmd(ctx: click.Context, user_id: int | None) -> None:
+def list_users_cmd(ctx: click.Context, user_id: int | None = None) -> None:
     # On réutilise la vue attachée au contexte si dispo, sinon on en crée une
     view: UserView = (
         ctx.obj.get("user_view")
@@ -58,6 +60,11 @@ def list_users_cmd(ctx: click.Context, user_id: int | None) -> None:
         session=SessionLocal()
     )
 
+    me = ctrl._get_current_user()
+    if not Permission.read_permission(me, "user"):
+        if not Permission.read_permission(me, "user", owner_id=user_id):
+            raise PermissionError("Accès refusé.")
+
     rows = ctrl.get_all_users(filters={"id": user_id} if user_id else None)
     view.list_users(rows, selector=False)
 
@@ -65,6 +72,7 @@ def list_users_cmd(ctx: click.Context, user_id: int | None) -> None:
 @click.command(name="update-user")
 @click.option("--id", "user_id", type=int, help="ID de l'utilisateur à modifier")
 @click.pass_context
+@audit_command(category="user", action="update", event_level_on_success="info")
 def update_user_cmd(ctx: click.Context, user_id: int | None) -> None:
     """Ouvre un menu de modification pour l'utilisateur spécifié."""
     ctx.ensure_object(dict)
@@ -77,12 +85,17 @@ def update_user_cmd(ctx: click.Context, user_id: int | None) -> None:
         session=SessionLocal()
     )
 
+    me = ctrl._get_current_user()
     # Sélection de l'utilisateur si pas d'id transmis
     if not user_id:
         rows = ctrl.get_all_users()
         user_id = user_view.list_users(rows, selector=True)
         if not user_id:
             return
+
+    target_user = ctrl.get_by_id(user_id)
+    if Permission.is_admin(target_user) and user_id != me.id:
+        raise PermissionError("Accès refusé.")
 
     username = ctrl.get_user_name(user_id)
     menu_view.modify_user_menu(user_id, username, ctx)
@@ -91,6 +104,7 @@ def update_user_cmd(ctx: click.Context, user_id: int | None) -> None:
 @click.command(name="update-user-infos")
 @click.option("--id", "user_id", type=int, help="ID de l'utilisateur à modifier")
 @click.pass_context
+@audit_command(category="user", action="update", event_level_on_success="info")
 def update_user_infos_cmd(ctx: click.Context, user_id: int | None) -> None:
     """Modifie les infos non sensibles de l'utilisateur spécifié."""
     ctx.ensure_object(dict)
@@ -122,13 +136,6 @@ def update_user_infos_cmd(ctx: click.Context, user_id: int | None) -> None:
 
     uid, payload = result
 
-    # revalidation côté ctrl, source de vérité
-    try:
-        _ = ctrl.get_user(int(uid))
-    except Exception as e:
-        view.app_state.set_error_message(str(e))
-        return
-
     try:
         ctrl.update_user(uid, payload)
         if view.app_state:
@@ -148,6 +155,9 @@ def update_user_infos_cmd(ctx: click.Context, user_id: int | None) -> None:
     help="ID de l'utilisateur dont le mot de passe doit être modifié",
 )
 @click.pass_context
+@audit_command(
+    category="user", action="update_password", event_level_on_success="warning"
+)
 def update_user_password_cmd(ctx: click.Context, user_id: int | None) -> None:
     """Modifie uniquement le mot de passe de l'utilisateur spécifié."""
     ctx.ensure_object(dict)
@@ -159,20 +169,29 @@ def update_user_password_cmd(ctx: click.Context, user_id: int | None) -> None:
         session=SessionLocal()
     )
 
-    # Sélection de l'utilisateur si pas d'id transmis
+    me = ctrl._get_current_user()
+    if user_id:
+        # Refuse si l'id n'est pas le miens
+        if not Permission.update_permission(
+            me, "user", owner_id=user_id, own_only=True
+        ):
+            # Si l'id n'est pas le miens, refuse si je ne suis pas admin
+            if not Permission.is_admin(me):
+                raise PermissionError("Accès refusé.")
+
+    # Sélection de l'utilisateur si pas d'id transmis, ADMIN ONLY
     if not user_id:
+        if not Permission.is_admin(me):
+            raise PermissionError("Accès refusé.")
+
         rows = ctrl.get_all_users()
         user_id = view.list_users(rows, selector=True)
         if not user_id:
             return
 
-    # Permission pour ne pas lancer les prompts, verif dans le ctrl tout de même
-    me = ctrl._get_current_user()
-    if not Permission.update_permission(me, "user"):
-        raise PermissionError("Accès refusé.")
-
-    # Vérifie que l'utilisateur cible est lui même afin de pouvoir changer son mdp
-    if Permission.update_permission(me, "user", owner_id=user_id):
+    # Dans le cas où l'admin modifie le mdp de quelqu'un d'autre, pas besoin de l'ancien mdp
+    # Cependant s'il souhaite modifier son propre MDP, il doit fournir l'ancien mot de passe
+    if me.id == int(user_id):
         view._clear_screen()
         view._print_back_choice()
         password = click.prompt("Ancien mot de passe", hide_input=True)
@@ -182,8 +201,6 @@ def update_user_password_cmd(ctx: click.Context, user_id: int | None) -> None:
         except Exception as e:
             view.app_state.set_error_message(str(e))
             return
-    else:
-        raise PermissionError("Accès refusé.")
 
     UserView._clear_screen()
     new_pwd = view.update_user_password_flow()
@@ -210,6 +227,7 @@ def update_user_password_cmd(ctx: click.Context, user_id: int | None) -> None:
 
 @click.command(name="delete-user")
 @click.pass_context
+@audit_command(category="user", action="delete", event_level_on_success="warning")
 def delete_user_cmd(ctx: click.Context, user_id: int | None = None) -> None:
     ctx.ensure_object(dict)
     console = ctx.obj.get("console")

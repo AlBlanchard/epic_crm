@@ -301,7 +301,7 @@ class UserView(BaseView):
                 self.console.print(f" - {role}")
 
             role_name = self.get_valid_input(
-                "Nom du rôle à supprimer :", list_to_compare=actual_roles_list
+                "Nom du rôle à supprimer", list_to_compare=actual_roles_list
             )
 
             return role_name

@@ -60,7 +60,7 @@ class ContractCRUD(AbstractBaseCRUD):
         return (
             self.session.query(Contract)
             .options(selectinload(Contract.client).selectinload(Client.sales_contact))
-            .filter(Contract.sales_contact_id == sales_contact_id)
+            .filter(Contract.client.sales_contact_id == sales_contact_id)
             .all()
         )
 

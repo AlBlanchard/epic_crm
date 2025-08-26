@@ -45,7 +45,7 @@ class ContractController(AbstractController):
         if not Permission.read_permission(me, "contract"):
             raise PermissionError("Accès refusé.")
 
-        rows = self.contracts.get_by_sales_contact(me.id)
+        rows = self.contracts.get_all(filters={"sales_contact_id": me.id})
         ser = self.serializer if fields is None else ContractSerializer(fields=fields)
         return ser.serialize_list(rows)
 
@@ -59,7 +59,7 @@ class ContractController(AbstractController):
         contract = self.contracts.get_by_id(contract_id)
         if not contract:
             raise ValueError("Contrat introuvable.")
-        self._ensure_owner_or_admin(me, contract.sales_contact_id)
+        self._ensure_owner_or_admin(me, contract.client.sales_contact_id)
         ser = self.serializer if fields is None else ContractSerializer(fields=fields)
         return ser.serialize(contract)
 
@@ -155,7 +155,8 @@ class ContractController(AbstractController):
     # ---------- Update ----------
     def update_contract(self, contract_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
         me = self._get_current_user()
-        if not Permission.update_permission(me, "contract"):
+        owner_id = self.get_contract_owner(contract_id).id
+        if not Permission.update_permission(me, "contract", owner_id=owner_id):
             raise PermissionError("Accès refusé.")
 
         contract = self.contracts.get_by_id(contract_id)

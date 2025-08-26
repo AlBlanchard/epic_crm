@@ -5,6 +5,7 @@ from ..auth.permission import Permission
 from ..crud.event_crud import EventCRUD
 from ..crud.contract_crud import ContractCRUD
 from ..crud.user_crud import UserCRUD
+from ..controllers.contract_controller import ContractController
 from ..serializers.event_serializer import EventSerializer, EventNoteSerializer
 from ..utils.validations import Validations
 from ..utils.app_state import AppState
@@ -20,6 +21,7 @@ class EventController(AbstractController):
         self.serializer = EventSerializer()
         self.app_state = AppState()
         self.note_serializer = EventNoteSerializer()
+        self.contract_ctrl = ContractController(session=self.session)
 
     # ---------- Read ----------
 
@@ -31,10 +33,10 @@ class EventController(AbstractController):
         fields: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
         me = self._get_current_user()
-        if Permission.is_admin(me):
-            rows = self.events.get_all(filters=filters, order_by=order_by)
-        else:
-            rows = self.events.get_by_support_contact(me.id)
+        if not Permission.read_permission(me, "event"):
+            raise PermissionError("Accès refusé.")
+
+        rows = self.events.get_all(filters=filters, order_by=order_by)
 
         ser = self.serializer if fields is None else EventSerializer(fields=fields)
         return ser.serialize_list(rows)
@@ -106,6 +108,11 @@ class EventController(AbstractController):
         if not isinstance(date_start, datetime):
             raise ValueError("date_start must be a datetime object")
         Validations.validate_future_datetime(date_start)
+
+        if "contract_id" in data:
+            cid = int(data["contract_id"])
+            if not self.contract_ctrl.is_contract_signed(cid):
+                raise ValueError("Contrat non signé.")
 
         payload = {**data}
         event = self.events.create(payload)

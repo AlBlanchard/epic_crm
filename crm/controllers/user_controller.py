@@ -27,7 +27,13 @@ class UserController(AbstractController):
         me = self._get_current_user()
 
         if not Permission.read_permission(me, "user"):
-            raise PermissionError("Accès refusé.")
+            # Vérifie si l'utilisateur souhai
+            if filters and "id" in filters:
+                user_id = filters.get("id")
+                if not Permission.read_permission(me, "user", owner_id=user_id):
+                    raise PermissionError("Accès refusé.")
+            else:
+                raise PermissionError("Accès refusé.")
 
         rows = self.users.get_all(filters=filters, order_by=order_by)
         ser = (
@@ -52,9 +58,6 @@ class UserController(AbstractController):
 
         if not target:
             raise ValueError("Utilisateur introuvable.")
-
-        if not (Permission.is_admin(me) or me.id == target.id):
-            raise PermissionError("Accès refusé.")
 
         ser = (
             self.serializer
@@ -115,6 +118,18 @@ class UserController(AbstractController):
             raise ValueError("Utilisateur introuvable.")
         return user.username
 
+    def get_by_id(self, user_id: int) -> Dict[str, Any]:
+        user = self.users.get_by_id(user_id)
+        me = self._get_current_user()
+
+        if not Permission.read_permission(me, "user", target_id=user_id):
+            raise PermissionError("Accès refusé.")
+
+        if not user:
+            raise ValueError("Utilisateur introuvable.")
+
+        return user
+
     # ---------- Create ----------
     def create_user(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -140,20 +155,20 @@ class UserController(AbstractController):
         me = self._get_current_user()
         target = self.users.get_by_id(user_id)
 
-        if not Permission.update_permission(me, "user", target_id=user_id):
+        if not Permission.update_permission(me, "user", owner_id=user_id):
             raise PermissionError("Accès refusé.")
 
         if not target:
             raise ValueError("Utilisateur introuvable.")
 
-        is_self = me.id == target.id
-        is_admin = Permission.is_admin(me)
+        target_is_admin = Permission.is_admin(target)
 
-        if not is_admin and "role_names" in data:
-            data = {k: v for k, v in data.items() if k != "role_names"}
-
-        if not (is_admin or is_self):
+        if target_is_admin and not me.id == user_id:
             raise PermissionError("Accès refusé.")
+
+        im_admin = Permission.is_admin(me)
+        if not im_admin and "role_names" in data:
+            data = {k: v for k, v in data.items() if k != "role_names"}
 
         updated = self.users.update_user(user_id, data)
         if updated is None:

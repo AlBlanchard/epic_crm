@@ -1,4 +1,5 @@
 from typing import Optional
+
 from .permission_config import Crud, ROLE_RULES
 
 
@@ -49,6 +50,7 @@ class Permission:
         op: Crud,
         owner_id: int | None = None,
         target_id: int | None = None,
+        own_only: bool = False
     ) -> bool:
         user_id = getattr(user, "id", None)
         # Admin
@@ -65,8 +67,9 @@ class Permission:
             return True
 
         # Règles de rôles sans notion d'owner
-        if Permission.role_allows(user, resource, op):
-            return True
+        if not own_only:
+            if Permission.role_allows(user, resource, op):
+                return True
 
         # Vérifie s'il peut en tant qu'owner
         if owner_id is not None:
@@ -77,7 +80,6 @@ class Permission:
                     return Permission.role_allows(user, resource, Crud.UPDATE_OWN)
                 if op == Crud.DELETE:
                     return Permission.role_allows(user, resource, Crud.DELETE_OWN)
-
         return False
 
     @staticmethod
@@ -106,7 +108,11 @@ class Permission:
 
     @staticmethod
     def update_permission(
-        user, resource: str, target_id: int | None = None, owner_id: int | None = None
+        user,
+        resource: str,
+        target_id: int | None = None,
+        owner_id: int | None = None,
+        own_only: bool = False,
     ) -> bool:
         return Permission.has_permission(
             user,
@@ -114,6 +120,7 @@ class Permission:
             op=Crud.UPDATE,
             target_id=target_id,
             owner_id=owner_id,
+            own_only=own_only,
         )
 
     @staticmethod

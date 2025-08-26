@@ -63,6 +63,21 @@ class Contract(AbstractBase):
             select(User.username)
             .join(ClientAlias, ClientAlias.sales_contact_id == User.id)
             .where(ClientAlias.id == cls.client_id)
+            .correlate(cls)
+            .scalar_subquery()
+        )
+
+    @hybrid_property
+    def sales_contact_id(self):  # type: ignore
+        return self.client.sales_contact_id if self.client else None
+
+    @sales_contact_id.expression
+    def sales_contact_id(cls):
+        ClientAlias = aliased(Client)
+        return (
+            select(ClientAlias.sales_contact_id)
+            .where(ClientAlias.id == cls.client_id)
+            .correlate(cls)
             .scalar_subquery()
         )
 

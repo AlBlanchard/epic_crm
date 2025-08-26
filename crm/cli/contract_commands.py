@@ -6,10 +6,10 @@ from ..views.contract_view import ContractView
 from ..views.client_view import ClientView
 from ..database import SessionLocal
 from ..auth.permission import Permission
-from ..auth.permission_config import Crud
 from ..errors.exceptions import UserCancelledInput
 from decimal import Decimal
 from .filter_commands import filter_cmd
+from ..utils.audit_decorators import audit_command
 
 
 @click.command(name="create-contract")
@@ -85,6 +85,7 @@ def list_contracts_cmd(ctx: click.Context) -> None:
 @click.command(name="sign-contract")
 @click.option("--id", "contract_id", type=int, help="ID du contrat à signer")
 @click.pass_context
+@audit_command(category="contract", action="sign", event_level_on_success="info")
 def sign_contract_cmd(ctx: click.Context, contract_id: int) -> None:
     view: ContractView = (
         ctx.obj.get("contract_view")
@@ -160,8 +161,6 @@ def update_contract_amount_cmd(
     )
 
     me = ctrl._get_current_user()
-    if not Permission.update_permission(me, "contract", contract_id):
-        raise PermissionError("Accès refusé.")
 
     if not contract_id:
         if Permission.update_permission(me, "contract"):
@@ -175,6 +174,10 @@ def update_contract_amount_cmd(
         if selected_id is None:
             return
         contract_id = selected_id
+
+    owner_id = ctrl.get_contract_owner(contract_id).id
+    if not Permission.update_permission(me, "contract", owner_id=owner_id):
+        raise PermissionError("Accès refusé.")
 
     amount_total, amount_due = ctrl.get_contract_amounts(contract_id)
 
