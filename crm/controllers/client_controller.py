@@ -53,6 +53,9 @@ class ClientController(AbstractController):
         fields: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         me = self._get_current_user()
+        if not Permission.read_permission(me, "client"):
+            raise PermissionError("Accès refusé.")
+
         client = self.clients.get_by_id(client_id)
         if not client:
             raise ValueError("Client introuvable.")
@@ -61,6 +64,10 @@ class ClientController(AbstractController):
         return ser.serialize(client)
 
     def get_owner(self, client_id: int) -> User:
+        me = self._get_current_user()
+        if not Permission.read_permission(me, "client"):
+            raise PermissionError("Accès refusé.")
+
         client = self.clients.get_by_id(client_id)
         if not client:
             raise ValueError("Client introuvable.")
@@ -117,23 +124,21 @@ class ClientController(AbstractController):
         return self.serializer.serialize(updated)
 
     # ---------- Delete ----------
-    def delete_client(self, client_id: int, *, force: bool = False) -> None:
+    def delete_client(self, client_id: int) -> None:
         """
         admin ou owner :
           - refuse si le client a des contrats (sauf force=True et admin)
         """
         me = self._get_current_user()
+        if not Permission.delete_permission(me, "client"):
+            raise PermissionError("Accès refusé.")
+
         client = self.clients.get_by_id(client_id)
         if not client:
             raise ValueError("Client introuvable.")
 
-        self._ensure_owner_or_admin(me, client.sales_contact_id)
-
         if self.clients.client_has_contracts(client_id):
-            if not (force and Permission.is_admin(me)):
-                raise PermissionError(
-                    "Le client a des contrats. Suppression interdite."
-                )
+            raise PermissionError("Le client a des contrats. Suppression interdite.")
 
         ok = self.clients.delete_client(client_id)
         if not ok:

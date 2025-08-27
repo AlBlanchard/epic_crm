@@ -30,7 +30,8 @@ def create_user_cmd(ctx: click.Context) -> None:
     if not Permission.create_permission(me, "user"):
         raise PermissionError("Accès refusé.")
 
-    result = view.create_user_flow()
+    employees_nbr = ctrl.get_all_employees_nbr()
+    result = view.create_user_flow(employees_nbr)
     if result is None:
         return
 

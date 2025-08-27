@@ -1,7 +1,7 @@
 import calendar
 import re
 from decimal import Decimal, InvalidOperation
-from typing import Iterable, TypeVar
+from typing import Iterable, List
 from datetime import datetime
 
 
@@ -40,6 +40,8 @@ class Validations:
         if response == "o":
             return True
         elif response == "n":
+            return False
+        elif response == "":
             return False
         else:
             raise ValueError("Réponse invalide. Veuillez répondre par 'o' ou 'n'.")
@@ -153,3 +155,10 @@ class Validations:
         if int_value <= 0:
             raise ValueError("La valeur doit être un entier positif.")
         Validations.validate_int_max_length(int_value, max_length)
+
+    @staticmethod
+    def validate_employee_number(value: int | str, employees_nbr: List[int]) -> None:
+        """Vérifie que le numéro d'employé est valide."""
+        Validations.validate_positive_integer(value)
+        if int(value) in employees_nbr:
+            raise ValueError("Numéro d'employé déjà utilisé.")

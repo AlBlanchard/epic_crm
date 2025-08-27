@@ -143,24 +143,20 @@ class EventView(BaseView):
         rows: list[dict],
         selector: bool = False,
     ) -> int | None:
-        self._clear_screen()
+        for row in rows:
+            row["created_at"] = Pretty.pretty_datetime(row["created_at"])
+            row["note"] = Pretty.pretty_notes([row["note"]])
 
-        self._print_table(
-            "[cyan]Notes[/cyan]",
-            ["id", "note", "created_at"],
-            rows,
+        columns = [
+            "id",
+            ("note", "Note"),
+            ("created_at", "Date de création"),
+        ]
+
+        return self.list_entities(
+            rows=rows,
+            title="[cyan]Notes[/cyan]",
+            columns=columns,
+            selector=selector,
+            entity="event_note",
         )
-
-        if selector:
-            validate_number = Validations.validate_number
-            self.console.print("[dim]Sélectionnez une note...[/dim]")
-            str_note_id = self.get_valid_input(
-                "ID de la note",
-                validate=validate_number,
-                list_to_compare=[str(u["id"]) for u in rows],
-            )
-            return int(str_note_id)
-
-        self.console.print("\n[dim]Appuyez sur Entrée pour revenir au menu...[/dim]")
-        self.app_state.display_error_or_success_message()
-        self.console.input()

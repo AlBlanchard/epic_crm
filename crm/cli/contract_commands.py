@@ -75,6 +75,10 @@ def list_contracts_cmd(ctx: click.Context) -> None:
         session=SessionLocal()
     )
 
+    me = ctrl._get_current_user()
+    if not Permission.read_permission(me, "contract"):
+        raise PermissionError("Accès refusé.")
+
     rows = ctrl.list_all()
     want_filter = view.list_all(rows, has_filter=True)
 
@@ -111,7 +115,7 @@ def sign_contract_cmd(ctx: click.Context, contract_id: int) -> None:
             raise PermissionError("Accès refusé.")
 
         # Liste pour selectionner le contrat à modifier
-        selected_id = view.list_all(rows, selector=True)
+        selected_id = view.list_all(rows, selector=True, title="Contrats Non Signés")
         if selected_id is None:
             return
         contract_id = selected_id

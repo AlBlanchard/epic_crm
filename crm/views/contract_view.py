@@ -52,6 +52,7 @@ class ContractView(BaseView):
         rows: List[Dict[str, Any]],
         selector: bool = False,
         has_filter: bool = False,
+        title: str = "Contrats",
     ) -> Optional[int]:
 
         for row in rows:
@@ -73,7 +74,7 @@ class ContractView(BaseView):
         ]
         return self.list_entities(
             rows=rows,
-            title="[cyan]Contrats[/cyan]",
+            title=f"[cyan]{title}[/cyan]",
             columns=columns,
             selector=selector,
             entity="contrat",

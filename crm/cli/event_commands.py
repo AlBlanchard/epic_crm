@@ -54,7 +54,9 @@ def create_event_cmd(ctx: click.Context, contract_id: int) -> None:
             raise PermissionError("Accès refusé.")
 
         # Liste pour selectionner le contrat à modifier
-        selected_id = contract_view.list_all(rows, selector=True)
+        selected_id = contract_view.list_all(
+            rows, selector=True, title="Contrats Signés"
+        )
         if selected_id is None:
             return
         contract_id = selected_id
@@ -85,6 +87,10 @@ def list_events_cmd(ctx: click.Context) -> None:
     ctrl: EventController = ctx.obj.get("event_controller") or EventController(
         session=SessionLocal()
     )
+
+    me = ctrl._get_current_user()
+    if not Permission.read_permission(me, "event"):
+        raise PermissionError("Accès refusé.")
 
     try:
         rows = ctrl.list_all()

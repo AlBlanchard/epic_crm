@@ -19,14 +19,23 @@ Resource = Literal["user", "client", "contract", "event"]
 
 # --- Rôles connus ---
 ROLE_ADMIN = "admin"
-ROLE_MANAGEMENT = "management"
-ROLE_SALES = "sales"
+ROLE_MANAGEMENT = "gestion"
+ROLE_SALES = "commercial"
 ROLE_SUPPORT = "support"
 
 # --- Matrice de base par rôle ---
 ROLE_RULES: dict[str, dict[str, set[Crud]]] = {
     ROLE_ADMIN: {
-        "*": {Crud.CREATE, Crud.READ, Crud.UPDATE, Crud.DELETE, Crud.ONLY_ADMIN}
+        "*": {
+            Crud.CREATE,
+            Crud.READ,
+            Crud.READ_OWN,
+            Crud.UPDATE,
+            Crud.UPDATE_OWN,
+            Crud.DELETE,
+            Crud.DELETE_OWN,
+            Crud.ONLY_ADMIN,
+        }
     },
     ROLE_MANAGEMENT: {
         "client": {Crud.READ},

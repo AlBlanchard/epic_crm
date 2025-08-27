@@ -141,7 +141,7 @@ class UserView(BaseView):
                 AppState.set_neutral_message("Action annulée par l'utilisateur.")
                 raise
 
-    def create_user_flow(self):
+    def create_user_flow(self, employees_nbr: List[int]):
         try:
             self._clear_screen()
             self._print_back_choice()
@@ -153,7 +153,9 @@ class UserView(BaseView):
             employee_number = self.get_valid_input(
                 "Numéro d'employé",
                 transform=int,
-                validate=self.valid.validate_int_max_length,
+                validate=lambda v: self.valid.validate_employee_number(
+                    v, employees_nbr
+                ),
             )
             password = self.get_valid_password("Mot de passe : ")
 

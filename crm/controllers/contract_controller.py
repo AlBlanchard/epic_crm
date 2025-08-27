@@ -56,6 +56,9 @@ class ContractController(AbstractController):
         fields: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         me = self._get_current_user()
+        if not Permission.read_permission(me, "contract"):
+            raise PermissionError("Accès refusé.")
+
         contract = self.contracts.get_by_id(contract_id)
         if not contract:
             raise ValueError("Contrat introuvable.")
@@ -64,6 +67,10 @@ class ContractController(AbstractController):
         return ser.serialize(contract)
 
     def is_contract_signed(self, contract_id: int) -> bool:
+        me = self._get_current_user()
+        if not Permission.read_permission(me, "contract"):
+
+            raise PermissionError("Accès refusé.")
         contract = self.contracts.get_by_id(contract_id)
         if not contract:
             raise ValueError("Contrat introuvable.")
@@ -76,6 +83,10 @@ class ContractController(AbstractController):
         fields: Optional[List[str]] = None,
         signed: bool = False,
     ) -> List[Dict[Any, str]]:
+        me = self._get_current_user()
+        if not Permission.read_permission(me, "contract"):
+            raise PermissionError("Accès refusé.")
+
         filters = {}
         if hasattr(Contract, "is_signed"):
             filters["is_signed"] = signed
@@ -109,6 +120,10 @@ class ContractController(AbstractController):
         Retourne le User propriétaire (sales_contact) d'un contrat.
         - None si le contrat n'existe pas ou si aucun commercial n'est lié.
         """
+        me = self._get_current_user()
+        if not Permission.read_permission(me, "contract"):
+            raise PermissionError("Accès refusé.")
+
         contract = self.session.get(
             Contract,
             contract_id,
@@ -117,6 +132,7 @@ class ContractController(AbstractController):
                 selectinload(Contract.client).selectinload(Client.sales_contact),
             ),
         )
+
         if not contract or not contract.client:
             raise ValueError("Le contrat n'a pas de client associé.")
 
@@ -128,6 +144,10 @@ class ContractController(AbstractController):
         return owner
 
     def get_contract_amounts(self, contract_id: int) -> Tuple[Decimal, Decimal]:
+        me = self._get_current_user()
+        if not Permission.read_permission(me, "contract"):
+            raise PermissionError("Accès refusé.")
+
         contract = self.contracts.get_by_id(contract_id)
         if not contract:
             raise ValueError("Contrat introuvable.")
@@ -159,6 +179,11 @@ class ContractController(AbstractController):
         if not Permission.update_permission(me, "contract", owner_id=owner_id):
             raise PermissionError("Accès refusé.")
 
+        # verrou pour champs sensibles si non admin
+        if not Permission.is_admin(me):
+            forbidden = {"client_id"}
+            data = {k: v for k, v in data.items() if k not in forbidden}
+
         contract = self.contracts.get_by_id(contract_id)
         if not contract:
             raise ValueError("Contrat introuvable.")
@@ -182,6 +207,14 @@ class ContractController(AbstractController):
 
         if not Permission.delete_permission(me, "contract"):
             raise PermissionError("Accès refusé.")
+
+        if self.is_contract_signed(contract_id) and not Permission.is_admin(me):
+            raise PermissionError("Le contrat est signé. Contacter un administrateur.")
+
+        if self.contracts.contract_has_events(contract_id):
+            raise PermissionError(
+                "Le contrat a des événements associés. Suppression interdite."
+            )
 
         ok = self.contracts.delete(contract_id)
         if not ok:

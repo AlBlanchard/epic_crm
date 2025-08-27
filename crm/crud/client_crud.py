@@ -122,4 +122,4 @@ class ClientCRUD(AbstractBaseCRUD):
         client = self.session.get(Client, client_id)
         if not client:
             return False
-        return client.contracts and any(c.is_active for c in client.contracts)
+        return bool(client.contracts)

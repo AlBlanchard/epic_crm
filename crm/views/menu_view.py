@@ -282,7 +282,7 @@ class MenuView(BaseView):
             (
                 "Assigner le support",
                 lambda: self.cli_utils.invoke(ctx, "update-support"),
-                [Crud.UPDATE, Crud.UPDATE_OWN],
+                [Crud.UPDATE],
                 "event",
             ),
             (
@@ -299,46 +299,73 @@ class MenuView(BaseView):
         self.run_menu(ctx, "-- Evénements --", items)
 
     def _menu_users(self, ctx: click.Context) -> None:
-        items = [
-            ("Créer un utilisateur", lambda: self.cli_utils.invoke(ctx, "create-user")),
+        raw_items = [
+            (
+                "Créer un utilisateur",
+                lambda: self.cli_utils.invoke(ctx, "create-user"),
+                [Crud.CREATE],
+                "user",
+            ),
             (
                 "Lister les utilisateurs",
                 lambda: self.cli_utils.invoke(ctx, "list-users"),
+                [Crud.READ],
+                "user",
             ),
             (
                 "Modifier un utilisateur",
                 lambda: self.cli_utils.invoke(ctx, "update-user"),
+                [Crud.UPDATE],
+                "user",
             ),
             (
                 "Supprimer un utilisateur",
                 lambda: self.cli_utils.invoke(ctx, "delete-user"),
+                [Crud.DELETE],
+                "user",
             ),
         ]
+
+        user = self.user_ctrl._get_current_user()
+        items = self._filter_items_by_permissions(user, raw_items)
+
         self.run_menu(ctx, "-- Utilisateurs --", items)
 
     def modify_user_menu(self, user_id: int, username: str, ctx: click.Context) -> None:
-        items = [
+        raw_items = [
             (
                 "Modifier les informations",
                 lambda: self.cli_utils.invoke(
                     ctx, "update-user-infos", user_id=user_id
                 ),
+                [Crud.UPDATE],
+                "user",
             ),
             (
                 "Modifier le mot de passe",
                 lambda: self.cli_utils.invoke(
                     ctx, "update-user-password", user_id=user_id
                 ),
+                [Crud.ONLY_ADMIN],
+                "user",
             ),
             (
                 "Ajouter un rôle",
                 lambda: self.cli_utils.invoke(ctx, "add-user-role", user_id=user_id),
+                [Crud.CREATE],
+                "user_role",
             ),
             (
                 "Supprimer un rôle",
                 lambda: self.cli_utils.invoke(ctx, "remove-user-role", user_id=user_id),
+                [Crud.DELETE],
+                "user_role",
             ),
         ]
+
+        user = self.user_ctrl._get_current_user()
+        items = self._filter_items_by_permissions(user, raw_items)
+
         self.run_menu(ctx, f"-- Modification de l'utilisateur : {username} --", items)
 
 

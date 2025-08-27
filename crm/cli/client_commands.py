@@ -5,6 +5,7 @@ from ..views.client_view import ClientView
 from ..views.user_view import UserView
 from ..database import SessionLocal
 from ..auth.permission import Permission
+from ..auth.permission_config import ROLE_ADMIN, ROLE_SALES, ROLE_SUPPORT
 from .filter_commands import filter_cmd
 
 
@@ -53,6 +54,10 @@ def list_clients_cmd(ctx: click.Context) -> None:
     ctrl: ClientController = ctx.obj.get("client_controller") or ClientController(
         session=SessionLocal()
     )
+
+    me = ctrl._get_current_user()
+    if not Permission.read_permission(me, "client"):
+        raise PermissionError("Accès refusé.")
 
     try:
         rows = ctrl.list_all()
@@ -160,8 +165,8 @@ def update_sales_contact_cmd(
         client_id = selected_id
 
     if not new_sales_id:
-        sales_list = user_ctrl.get_all_users_by_role("sales")
-        sales_list = sales_list + user_ctrl.get_all_users_by_role("admin")
+        sales_list = user_ctrl.get_all_users_by_role(ROLE_SALES)
+        sales_list = sales_list + user_ctrl.get_all_users_by_role(ROLE_ADMIN)
         selected_id = user_view.list_users(
             sales_list,
             selector=True,

@@ -118,3 +118,11 @@ class ContractCRUD(AbstractBaseCRUD):
         except Exception:
             self.session.rollback()
             raise
+
+    # -- Utils --
+    def contract_has_events(self, contract_id: int) -> bool:
+        """Vérifie si un contrat a des événements associés."""
+        contract = self.session.get(Contract, contract_id)
+        if not contract:
+            return False
+        return bool(contract.event)

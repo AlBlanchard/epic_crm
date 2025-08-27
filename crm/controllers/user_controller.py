@@ -27,7 +27,7 @@ class UserController(AbstractController):
         me = self._get_current_user()
 
         if not Permission.read_permission(me, "user"):
-            # Vérifie si l'utilisateur souhai
+            # Vérifie si l'utilisateur souhaite accéder à ses propres données
             if filters and "id" in filters:
                 user_id = filters.get("id")
                 if not Permission.read_permission(me, "user", owner_id=user_id):
@@ -96,7 +96,6 @@ class UserController(AbstractController):
         include_roles: bool = True,
     ) -> Dict[str, Any]:
         me = self._get_current_user()
-
         if not Permission.read_permission(me, "user", target_id=me.id):
             raise PermissionError("Accès refusé.")
 
@@ -110,7 +109,6 @@ class UserController(AbstractController):
     def get_user_name(self, user_id: int) -> str:
         user = self.users.get_by_id(user_id)
         me = self._get_current_user()
-
         if not Permission.read_permission(me, "user", target_id=user_id):
             raise PermissionError("Accès refusé.")
 
@@ -130,6 +128,14 @@ class UserController(AbstractController):
 
         return user
 
+    def get_all_employees_nbr(self) -> List[int]:
+        me = self._get_current_user()
+        if not Permission.read_permission(me, "user"):
+            raise PermissionError("Accès refusé.")
+
+        rows = self.users.get_all()
+        return [u.employee_number for u in rows if u.employee_number]
+
     # ---------- Create ----------
     def create_user(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -138,9 +144,12 @@ class UserController(AbstractController):
         - role_names: List[str] (optionnel, admin only)
         """
         me = self._get_current_user()
-
         if not Permission.create_permission(me, "user"):
             raise PermissionError("Accès refusé.")
+
+        employees_nbr = self.get_all_employees_nbr()
+
+        self.valid.validate_employee_number(data["employee_number"], employees_nbr)
 
         user = self.users.create_user(data)  # set_password géré dans le CRUD
         return self.serializer.serialize(user)
@@ -154,7 +163,6 @@ class UserController(AbstractController):
         """
         me = self._get_current_user()
         target = self.users.get_by_id(user_id)
-
         if not Permission.update_permission(me, "user", owner_id=user_id):
             raise PermissionError("Accès refusé.")
 
@@ -187,7 +195,6 @@ class UserController(AbstractController):
     # ---------- Delete ----------
     def delete_user(self, user_id: int) -> None:
         me = self._get_current_user()
-
         if not Permission.delete_permission(me, "user", target_id=user_id):
             raise PermissionError("Accès refusé.")
 
@@ -200,7 +207,6 @@ class UserController(AbstractController):
         self, user_id: int, role_id: int, create_new_user: bool = False
     ) -> None:
         me = self._get_current_user()
-
         if not create_new_user:
             if not Permission.create_permission(me, "user_role"):
                 raise PermissionError("Accès refusé.")

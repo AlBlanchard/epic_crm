@@ -95,6 +95,8 @@ class BaseView(ABC):
             return True
         elif response == "n":
             return False
+        elif response == "":
+            return False
         else:
             raise ValueError("Réponse invalide. Veuillez répondre par 'o' ou 'n'.")
 

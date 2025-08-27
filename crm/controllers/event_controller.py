@@ -45,6 +45,9 @@ class EventController(AbstractController):
         self, *, fields: Optional[List[str]] = None
     ) -> List[Dict[str, Any]]:
         me = self._get_current_user()
+        if not Permission.read_permission(me, "event"):
+            raise PermissionError("Accès refusé.")
+
         rows = self.events.get_by_support_contact(me.id)
         ser = self.serializer if fields is None else EventSerializer(fields=fields)
         return ser.serialize_list(rows)
@@ -56,26 +59,15 @@ class EventController(AbstractController):
         fields: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         me = self._get_current_user()
+        if not Permission.read_permission(me, "event"):
+            raise PermissionError("Accès refusé.")
+
         ev = self.events.get_by_id(event_id)
         if not ev:
-            raise ValueError("Événement introuvable.")
-        self._ensure_owner_or_admin(me, ev.support_contact_id)
+            raise ValueError("Evénement introuvable.")
+
         ser = self.serializer if fields is None else EventSerializer(fields=fields)
         return ser.serialize(ev)
-
-    def list_by_contract(
-        self,
-        contract_id: int,
-        *,
-        fields: Optional[List[str]] = None,
-    ) -> List[Dict[str, Any]]:
-        me = self._get_current_user()
-        # admin -> ok ; support -> restreint à ses événements
-        rows = self.events.get_by_contract(contract_id)
-        if not Permission.is_admin(me):
-            rows = [e for e in rows if e.support_contact_id == me.id]
-        ser = self.serializer if fields is None else EventSerializer(fields=fields)
-        return ser.serialize_list(rows)
 
     def list_event_notes(self, event_id: int) -> List[Dict[str, Any]]:
         me = self._get_current_user()
@@ -120,12 +112,12 @@ class EventController(AbstractController):
 
     def create_note(self, event_id: int, note: str):
         me = self._get_current_user()
-        ev = self.events.get_by_id(event_id)
-        if not ev:
-            raise ValueError("Événement introuvable.")
-
         if not Permission.update_permission(me, "event"):
             raise PermissionError("Accès refusé.")
+
+        ev = self.events.get_by_id(event_id)
+        if not ev:
+            raise ValueError("Evénement introuvable.")
 
         note = self.events.create_note({"event_id": event_id, "note": note})
         if not note:
@@ -141,9 +133,12 @@ class EventController(AbstractController):
         me = self._get_current_user()
         ev = self.events.get_by_id(event_id)
         if not ev:
-            raise ValueError("Événement introuvable.")
+            raise ValueError("Evénement introuvable.")
 
-        self._ensure_owner_or_admin(me, ev.support_contact_id)
+        if not Permission.update_permission(
+            me, "event", owner_id=ev.support_contact_id
+        ):
+            raise PermissionError("Accès refusé.")
 
         # verrou pour champs sensibles si non admin
         if not Permission.is_admin(me):
@@ -172,11 +167,11 @@ class EventController(AbstractController):
         admin ou owner (support) peuvent supprimer.
         """
         me = self._get_current_user()
-        ev = self.events.get_by_id(event_id)
-        if not ev:
-            raise ValueError("Événement introuvable.")
+        if not Permission.delete_permission(me, "event"):
+            raise PermissionError("Accès refusé.")
 
-        self._ensure_owner_or_admin(me, ev.support_contact_id)
+        if not self.events.get_by_id(event_id):
+            raise ValueError("Evénement introuvable.")
 
         ok = self.events.delete(event_id)
         if not ok:

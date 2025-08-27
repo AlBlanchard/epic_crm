@@ -46,7 +46,7 @@ def _create_initial_data():
         try:
             # Création des rôles de base
             roles = {}
-            for role_name in ["admin", "management", "sales", "support"]:
+            for role_name in ["admin", "gestion", "commercial", "support"]:
                 role = Role(name=role_name)
                 session.add(role)
                 roles[role_name] = role
@@ -121,7 +121,7 @@ def reset_hard(ctx: click.Context):
 
     engine.dispose()
 
-    # Exécute le nuke (BOOM)
+    # Exécute la nuke (BOOM)
     with engine.connect() as raw:
         raw = raw.execution_options(isolation_level="AUTOCOMMIT")
         raw.execute(text("SET lock_timeout = '3s'"))
