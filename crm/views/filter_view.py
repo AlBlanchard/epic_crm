@@ -61,14 +61,14 @@ class FilterView(BaseView):
         title = f"[cyan]Filtres disponibles — {entity.title()}[/cyan]"
         self._print_table(title, ["id", "name"], rows)
 
-        # Sélection (1..n). R/0 gérés par ta select_id si tu l’as prévu.
+        # Sélection (1..n)
         idx = self.select_id(
             rows=rows, entity="filtre", intro="[dim]Choisissez un filtre...[/dim]"
         )
         if idx is None:
             return None
 
-        # Convertit l'index choisi (1..n) vers l'élément AUTHORIZED_FILTERS (0..n-1)
+        # Convertit l'index choisi (1..n) vers l'élément AUTHORIZED_FILTERS
         return defs[idx - 1]
 
     def enter_filter_criteria(

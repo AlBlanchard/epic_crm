@@ -111,14 +111,13 @@ class MenuView(BaseView):
                     idx = int(choice)
                     if 1 <= idx <= len(items):
                         _, action = items[idx - 1]
-                        action()  # exécute l’action
+                        action()
                     else:
                         self.app_state.set_error_message("[red]Choix invalide[/red]")
                 else:
                     self.app_state.set_error_message("[red]Choix invalide[/red]")
 
             except Exception as e:
-                # Centralise l’erreur pour un affichage uniformisé
                 self.app_state.set_error_message(str(e))
 
     def run(self, ctx: click.Context) -> None:

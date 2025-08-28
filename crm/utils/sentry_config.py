@@ -11,19 +11,17 @@ import sentry_sdk
 from sentry_sdk import add_breadcrumb, capture_exception, capture_message
 from sentry_sdk.integrations.logging import LoggingIntegration
 
-# Charge .env en dev (sans effet si absent)
 load_dotenv()
 
 
-# Logger "audit"
-# ---------------------------------------------------------------------------
+# Logger audit
 
 _AUDIT_LOGGER_NAME = "audit"
 _logger_initialized = False
 
 
 def get_audit_logger() -> logging.Logger:
-    """Retourne un logger 'audit' configuré une seule fois."""
+    """Retourne un logger audit configuré une seule fois."""
     global _logger_initialized
     logger = logging.getLogger(_AUDIT_LOGGER_NAME)
     if not _logger_initialized:
@@ -38,17 +36,12 @@ def get_audit_logger() -> logging.Logger:
     return logger
 
 
-# Sentry init & sécurité
-# ---------------------------------------------------------------------------
+# Sentry init et sécurité
 
 _sentry_initialized = False
 
 
 def _before_send(event, hint):
-    """
-    Scrubbing *minimal* (à adapter):
-    - Exemple: évite d'envoyer des emails tels quels dans event.message
-    """
     msg = event.get("message")
     if msg and isinstance(msg, str):
         event["message"] = msg.replace("@", " [at] ")
@@ -88,7 +81,6 @@ def init_sentry():
 
 
 # Hook global des exceptions
-# ---------------------------------------------------------------------------
 
 _hook_installed = False
 
@@ -114,7 +106,6 @@ def install_global_exception_hook():
 
 
 # API d'audit (breadcrumbs + events Sentry)
-# ---------------------------------------------------------------------------
 
 
 def audit_breadcrumb(
@@ -140,8 +131,8 @@ def audit_event(
 ):
     """
     Envoie un évènement explicite à Sentry.
-    - level="info"/"warning" : événements visibles (pas forcément un "issue")
-    - level="error"/"critical"/"fatal" : crée un "issue" Sentry
+    - level="info"/"warning" : événements visibles (pas forcément un issue)
+    - level="error"/"critical"/"fatal" : crée un issue Sentry
     """
     sentry_sdk.set_context("audit", data or {})
     capture_message(message, level=level)

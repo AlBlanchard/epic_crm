@@ -89,12 +89,6 @@ def cli(ctx: click.Context):
 
 
 # --- Enregistrement des commandes ---
-# Auth
-@click.pass_context
-def _bind_auth(ctx: click.Context):
-    # utilitaire pour attacher d’autres vues plus tard
-    return ctx
-
 
 # Commandes DB
 cli.add_command(init_db)
