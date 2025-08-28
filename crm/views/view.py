@@ -115,7 +115,7 @@ class BaseView(ABC):
         quit_aliases: Iterable[str] = ("q", "quit", "exit"),
         show_default: bool = True,
         max_attempts: Optional[int] = 3,
-    ) -> T:
+    ) -> T | None:
         """
         Demande une entrée utilisateur, transforme et valide.
         - 'default': valeur de repli si entrée vide (gérée par click).
@@ -141,7 +141,8 @@ class BaseView(ABC):
 
                 # Quit intention
                 if raw_str.casefold() in aliases:
-                    raise UserCancelledInput("Action annulée par l'utilisateur.")
+                    AppState.set_neutral_message("Action annulée par l'utilisateur.")
+                    return None
 
                 if raw_str is None and default is None:
                     AppState.set_error_message("Ce champ est requis.")
@@ -279,7 +280,7 @@ class BaseView(ABC):
         entity: str,
         intro: Optional[str] = None,
         id_label: Optional[str] = None,
-    ) -> Optional[int]:
+    ) -> Optional[str]:
         """
         Sous fonction pour sélectionner un ID parmi les rows d'un tableau.
 
@@ -325,7 +326,7 @@ class BaseView(ABC):
             list_to_compare=allowed_ids,
         )
 
-        return int(str_id)
+        return str_id
 
     def list_entities(
         self,
@@ -351,7 +352,10 @@ class BaseView(ABC):
             ent = entity or "élément"
             pr = prompt or f"[dim]Sélectionnez un {ent}...[/dim]"
             selected_id = self.select_id(rows=rows, entity=ent, intro=pr)
-            return selected_id
+            if selected_id is not None:
+                return int(selected_id)
+            return None
+
 
         if has_filter:
             return self.true_or_false("Souhaitez vous appliquer un filtre ?")

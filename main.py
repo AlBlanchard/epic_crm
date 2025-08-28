@@ -1,56 +1,17 @@
 import click
 from rich.console import Console
-
 from crm.views.auth_view import AuthView
-from crm.views.menu_view import menu_cmd
+from crm.utils.app_state import AppState
 from crm.cli.db_commands import init_db, reset_hard
 from crm.cli.auth_commands import login_cmd, logout_cmd
-from crm.cli.user_commands import (
-    create_user_cmd,
-    list_users_cmd,
-    update_user_cmd,
-    delete_user_cmd,
-    update_user_password_cmd,
-    update_user_infos_cmd,
-    add_user_role_cmd,
-    remove_user_role_cmd,
-)
-from crm.cli.client_commands import (
-    create_client_cmd,
-    list_clients_cmd,
-    update_client_cmd,
-    update_sales_contact_cmd,
-    delete_client_cmd,
-)
-from crm.cli.contract_commands import (
-    create_contract_cmd,
-    list_contracts_cmd,
-    sign_contract_cmd,
-    update_contract_amount_cmd,
-    delete_contract_cmd,
-)
-from crm.cli.event_commands import (
-    create_event_cmd,
-    list_events_cmd,
-    update_event_cmd,
-    add_event_note_cmd,
-    delete_note_cmd,
-    update_support_cmd,
-    delete_event_cmd,
-)
+from crm.controllers.main_controller import MainController
 from crm.utils.sentry_config import (
     init_sentry,
     install_global_exception_hook,
-    get_audit_logger,
-    audit_breadcrumb,
-    audit_event,
 )
-from crm.cli.filter_commands import filter_cmd
-from crm.utils.app_state import AppState
 
 init_sentry()
 install_global_exception_hook()
-logger = get_audit_logger()
 
 
 @click.group(invoke_without_command=True)
@@ -83,61 +44,20 @@ def cli(ctx: click.Context):
         console.print("[bold yellow]Connexion requise.[/bold yellow]")
         ctx.invoke(login_cmd)
 
-    # Si aucune sous-commande, on lance le menu principal
-    if ctx.invoked_subcommand is None:
-        ctx.invoke(menu_cmd)
+    app = MainController()
+    app.run()
 
-
-# --- Enregistrement des commandes ---
 
 # Commandes DB
 cli.add_command(init_db)
 cli.add_command(reset_hard)
 
-# Commandes d'auth (méthodes Click sur l'instance)
+# Commandes d'auth
 cli.add_command(login_cmd)
 cli.add_command(logout_cmd)
-
-# Menu principal (fonction Click indépendante)
-cli.add_command(menu_cmd)
-
-# -- Users--
-cli.add_command(create_user_cmd)
-cli.add_command(list_users_cmd)
-cli.add_command(update_user_cmd)
-cli.add_command(update_user_password_cmd)
-cli.add_command(delete_user_cmd)
-cli.add_command(update_user_infos_cmd)
-cli.add_command(update_user_password_cmd)
-cli.add_command(add_user_role_cmd)
-cli.add_command(remove_user_role_cmd)
-
-# -- Clients--
-cli.add_command(create_client_cmd)
-cli.add_command(list_clients_cmd)
-cli.add_command(update_client_cmd)
-cli.add_command(update_sales_contact_cmd)
-cli.add_command(delete_client_cmd)
-
-# -- Contracts--
-cli.add_command(create_contract_cmd)
-cli.add_command(list_contracts_cmd)
-cli.add_command(sign_contract_cmd)
-cli.add_command(update_contract_amount_cmd)
-cli.add_command(delete_contract_cmd)
-
-# -- Events--
-cli.add_command(create_event_cmd)
-cli.add_command(list_events_cmd)
-cli.add_command(update_event_cmd)
-cli.add_command(add_event_note_cmd)
-cli.add_command(delete_note_cmd)
-cli.add_command(update_support_cmd)
-cli.add_command(delete_event_cmd)
-
-# -- Filtres --
-cli.add_command(filter_cmd)
 
 
 if __name__ == "__main__":
     cli()
+
+    

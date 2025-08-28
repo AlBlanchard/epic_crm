@@ -1,10 +1,15 @@
-# crm/controllers/user_controller.py
+import click
 from typing import Dict, Any, Optional, List
 from .base import AbstractController
 from ..auth.permission import Permission
 from ..crud.user_crud import UserCRUD
 from ..crud.role_crud import RoleCRUD
 from ..serializers.user_serializer import UserSerializer
+from ..views.user_view import UserView
+from ..auth.auth import Authentication
+from ..controllers.role_controller import RoleController
+from ..utils.validations import Validations
+from ..errors.exceptions import UserCancelledInput
 
 
 class UserController(AbstractController):
@@ -14,6 +19,8 @@ class UserController(AbstractController):
         self.users = UserCRUD(self.session)
         self.roles = RoleCRUD(self.session)
         self.serializer = UserSerializer()
+        self.view = UserView()
+        self.role_ctrl = RoleController()
 
     # ---------- Read ----------
     def get_all_users(
@@ -254,3 +261,5 @@ class UserController(AbstractController):
         if not user:
             raise ValueError("Utilisateur introuvable.")
         return any(r.id == role_id for r in user.roles)
+
+

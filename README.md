@@ -107,14 +107,12 @@ Initialise le schéma / les données de départ :
 
 ```bash
 python main.py init
-
 ```
 
 Réinitialise entièrement la base (destructif) il faut être connecté comme admin :
 
 ```bash
 python main.py reset-hard
-
 ```
 
 ----------
@@ -125,7 +123,6 @@ Interface menu (mode interactif) :
 
 ```bash
 python main.py
-
 ```
 
 ----------
@@ -140,72 +137,7 @@ python main.py
 ```text
 login            # Se connecter
 logout           # Se déconnecter
-
 ```
-
-### Menu
-
-```text
-menu             # Ouvre le menu principal en console
-
-```
-
-### Users
-
-```text
-create-user
-list-users
-update-user
-update-user-password
-update-user-infos
-delete-user
-add-user-role
-remove-user-role
-
-```
-
-### Clients
-
-```text
-create-client
-list-clients
-update-client
-update-sales-contact
-delete-client
-
-```
-
-### Contracts
-
-```text
-create-contract
-list-contracts
-sign-contract
-update-contract-amount
-delete-contract
-
-```
-
-### Events
-
-```text
-create-event
-list-events
-update-event
-add-event-note
-delete-note
-update-support
-delete-event
-
-```
-
-### Filtres
-
-```text
-filter
-
-```
-
 ----------
 
 ## Journalisation & Sentry
@@ -228,5 +160,3 @@ Le projet s’intègre à **Sentry** pour :
         
 
 > Les helpers Sentry/Audit sont centralisés (ex. `crm/utils/sentry_config.py`) et initialisés au démarrage.
-
-----------

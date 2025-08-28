@@ -5,6 +5,8 @@ from ..crud.client_crud import ClientCRUD
 from ..crud.user_crud import UserCRUD
 from ..serializers.client_serializer import ClientSerializer
 from ..models.user import User
+from ..views.client_view import ClientView
+from ..views.user_view import UserView
 
 
 class ClientController(AbstractController):
@@ -13,6 +15,8 @@ class ClientController(AbstractController):
         self.clients = ClientCRUD(self.session)
         self.users = UserCRUD(self.session)
         self.serializer = ClientSerializer()
+        self.view = ClientView()
+        self.user_view = UserView()
 
     # ---------- Read ----------
     def list_all(
