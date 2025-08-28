@@ -80,3 +80,6 @@ class FilterController(AbstractController):
             raise ValueError(
                 f"Erreur lors de la récupération des entités filtrées : {e}"
             )
+
+    def show_filter_menu(self):
+        pass

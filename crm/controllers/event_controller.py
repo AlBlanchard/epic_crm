@@ -187,3 +187,4 @@ class EventController(AbstractController):
             self.events.delete_note(note_id)
         except ValueError:
             raise ValueError("Note introuvable.")
+
