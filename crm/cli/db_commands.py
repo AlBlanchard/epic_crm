@@ -11,12 +11,29 @@ from ..models.event import Event  # Import nécessaire pour la création des tab
 from sqlalchemy import text
 from ..auth.permission import Permission
 from ..controllers.user_controller import UserController
+from config.settings import DATABASE
+from config.settings import get_admin_url
+from sqlalchemy import create_engine, text
 
 
 @click.group(name="db-cli")
 def db_cli():
     """Commandes liées à la base de données."""
     pass
+
+
+def _bootstrap_database():
+
+    admin_engine = create_engine(get_admin_url(), isolation_level="AUTOCOMMIT")
+    with admin_engine.connect() as conn:
+        conn.execute(
+            text(
+                f"CREATE USER {DATABASE['user']} WITH PASSWORD '{DATABASE['password']}'"
+            )
+        )
+        conn.execute(
+            text(f"CREATE DATABASE {DATABASE['database']} OWNER {DATABASE['user']}")
+        )
 
 
 def _database_exists():
@@ -90,6 +107,8 @@ def _terminate_other_sessions(conn):
 @click.pass_context
 def init_db(ctx: click.Context):
     """Initialise la base de données."""
+
+    _bootstrap_database()
 
     # Vérification si la base existe déjà
     if _database_exists():

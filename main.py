@@ -75,7 +75,7 @@ def cli(ctx: click.Context):
     auth_view: AuthView = ctx.obj["auth_view"]
 
     # Laisse passer login/logout sans authentification préalable
-    if ctx.invoked_subcommand in {"login", "logout"}:
+    if ctx.invoked_subcommand in {"login", "logout", "init"}:
         return
 
     # Vérifie l'auth sinon

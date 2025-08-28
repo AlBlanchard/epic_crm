@@ -45,6 +45,13 @@ pip install -r requirements.txt
 
 ```
 
+Problème d'interpreter dans VS Code :
+
+Si certains imports de dépendances ne sont pas reconnus dans VS Code,
+1.  Dand VS Code, appuyez sur Ctrl+Shift+P et sélectionnez "Python: Select Interpreter".
+2.  Choisissez l'interpreter  .venv 
+3.  Redémarrez VS Code si besoin
+
 ----------
 
 ## Configuration (.env)
