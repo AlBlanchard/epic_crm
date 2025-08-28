@@ -29,21 +29,39 @@ Interface en console via **Click** et affichages soignés (Rich).
 
 ## Installation
 
+1.  **Cloner**
+
 ```bash
 git clone https://github.com/AlBlanchard/epic_crm.git
 cd epic_crm
-
-# (Optionnel) environnement virtuel
-python -m venv .venv
-# Windows
-.venv\Scripts\activate
-# macOS/Linux
-source .venv/bin/activate
-
-# Dépendances
-pip install -r requirements.txt
-
 ```
+
+2.  **Installer l'environnement virtuel**
+
+```bash
+python -m venv venv
+```
+
+3.  **Activer l'environnement virtuel**
+
+- Sur **Linux/macOS**:
+
+```bash
+source venv/bin/activate
+```
+
+- Sur **Windows**:
+
+```bash
+.\venv\Scripts\activate
+```
+
+4.  **Installer les dépendances**
+
+```bash
+pip install -r requirements.txt
+```
+
 
 Problème d'interpreter dans VS Code :
 
@@ -51,7 +69,6 @@ Si certains imports de dépendances ne sont pas reconnus dans VS Code,
 1.  Dand VS Code, appuyez sur Ctrl+Shift+P et sélectionnez "Python: Select Interpreter".
 2.  Choisissez l'interpreter  .venv 
 3.  Redémarrez VS Code si besoin
-
 ----------
 
 ## Configuration (.env)
@@ -59,24 +76,25 @@ Si certains imports de dépendances ne sont pas reconnus dans VS Code,
 Crée un fichier **.env** à la racine (non versionné) :
 
 ```dotenv
+# Vos ID admin postgre, pour créer la DB
+ADMIN_USER=<votre ID>
+ADMIN_PASSWORD=<votre mdp>
 
-DB_USER=epic_crm_user
-DB_PASSWORD=<votre mdp>
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=epic_crm
+# Configuration de la DB et création d'un utilisateur
+DB_USER=<nom d'utilisateur>
+DB_PASSWORD=<le mdp associé>
+DB_HOST=<si local: localhost>
+DB_PORT=<généralement 5432 si local>
+DB_NAME=<nom de la DB>
 
+# Configuration des tokens
 JWT_SECRET_KEY=<votre clée secrète>
 JWT_ALGORITHM=<algo des JWT, par ex. HS256, HS384, HS512>
 JWT_ACCESS_TOKEN_EXPIRES=<durée en h (ex: 3h)>
-
 JWT_REFRESH_TOKEN_EXPIRES=<durée en d (ex: 10d)>
 
 # Sentry (facultatif mais recommandé)
 SENTRY_DSN= https://<public_key>@sentry.io/<project_id>
-SENTRY_ENV= dev
-SENTRY_RELEASE= epic-crm@1.0.0
-
 ```
 
 > Si `SENTRY_DSN` est vide, Sentry est simplement désactivé (aucun crash).
@@ -101,7 +119,7 @@ python main.py reset-hard
 
 ----------
 
-## Lancer l'application
+## Lancer l’application
 
 Interface menu (mode interactif) :
 
@@ -192,7 +210,7 @@ filter
 
 ## Journalisation & Sentry
 
-Le projet s'intègre à **Sentry** pour :
+Le projet s’intègre à **Sentry** pour :
 
 -   **Exceptions non gérées** (via `sys.excepthook`) → issues Sentry
     
@@ -210,3 +228,12 @@ Le projet s'intègre à **Sentry** pour :
         
 
 > Les helpers Sentry/Audit sont centralisés (ex. `crm/utils/sentry_config.py`) et initialisés au démarrage.
+
+----------
+
+
+## Tests
+
+> À compléter : ajouter des tests unitaires/CLI (pytest), plus tard.
+
+----------
