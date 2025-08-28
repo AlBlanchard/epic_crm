@@ -14,6 +14,7 @@ from ..controllers.user_controller import UserController
 from config.settings import DATABASE
 from config.settings import get_admin_url
 from sqlalchemy import create_engine, text
+from ..utils.validations import Validations
 
 
 @click.group(name="db-cli")
@@ -55,6 +56,11 @@ def _create_initial_data():
     click.echo("\n=== Configuration de l'utilisateur admin ===")
     username = click.prompt("Nom d'utilisateur admin", default="admin")
     email = click.prompt("Email admin", default="admin@example.com")
+    try:
+        Validations.validate_email(email)
+    except ValueError as ve:
+        click.echo(f"{ve} Email par défault utilisé (admin@example.com). Vous pouvez le changer plus tard.")
+        email = "admin@example.com"
     password = click.prompt(
         "Mot de passe admin", hide_input=True, confirmation_prompt=True
     )
