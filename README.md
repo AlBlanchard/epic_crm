@@ -230,10 +230,3 @@ Le projet s’intègre à **Sentry** pour :
 > Les helpers Sentry/Audit sont centralisés (ex. `crm/utils/sentry_config.py`) et initialisés au démarrage.
 
 ----------
-
-
-## Tests
-
-> À compléter : ajouter des tests unitaires/CLI (pytest), plus tard.
-
-----------
