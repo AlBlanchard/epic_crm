@@ -8,6 +8,8 @@ from ..controllers.user_controller import UserController
 from ..views.menu_view import MenuView
 from ..auth.permission_config import Crud
 from ..auth.permission import Permission
+from ..controllers.auth_controller import AuthController
+
 
 
 
@@ -19,6 +21,7 @@ class MainController(AbstractController):
         self.contract_menu_ctrl = ContractMenuController()
         self.event_menu_ctrl = EventMenuController()
         self.user_ctrl = UserController()
+        self.auth_ctrl = AuthController()
 
     def _filter_items_by_permissions(self, user, raw_items):
         """Filtre les actions autorisées selon les permissions"""
@@ -47,7 +50,11 @@ class MainController(AbstractController):
                 self.view.console.print("\n[bold green]Au revoir ![/bold green]\n")
                 sys.exit(0)  # Quitter l'appli
             if choice == "R":
-                break   # Retour
+                if logout:
+                    self.view._clear_screen()
+                    self.view.console.print("\n[bold yellow]Déconnexion...[/bold yellow]\n")
+                    self.auth_ctrl.logout()
+                break
 
             if choice.isdigit():
                 idx = int(choice) - 1
@@ -58,7 +65,7 @@ class MainController(AbstractController):
     def run(self):
         """Menu principal"""
         raw_items = [
-            ("Mon profil", self.show_menu_my_profile, [Crud.READ], "user"),
+            ("Mon profil", self.show_menu_my_profile, [Crud.READ_OWN], "user"),
             ("Clients", self.show_menu_clients, [Crud.READ], "client"),
             ("Contrats", self.show_menu_contracts, [Crud.READ], "contract"),
             ("Événements", self.show_menu_events, [Crud.READ], "event"),
