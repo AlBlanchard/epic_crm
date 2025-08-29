@@ -364,3 +364,11 @@ class BaseView(ABC):
         AppState.display_error_or_success_message()
         self.console.input()
         return None
+    
+    def view_logout(self):
+        self._clear_screen()
+        self.console.print("\n[bold yellow]Déconnexion...[/bold yellow]\n")
+
+    def view_exit(self):
+        self._clear_screen()
+        self.console.print("\n[bold green]Au revoir ![/bold green]\n")

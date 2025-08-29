@@ -15,18 +15,34 @@ class MenuView(BaseView):
             self._clear_screen()
             self.console.print(f"\n[bold cyan]{title}[/bold cyan]")
 
+            # Affichages des options
             for i, label in enumerate(items, start=1):
                 self.console.print(f"{i}. {label}")
 
+            # Affichage de l'option de retour ou déconnexion
             if logout:
                 self.console.print("\n[yellow]R. Se déconnecter[/yellow]")
             else:
                 self.console.print("\n[yellow]R. Retour[/yellow]")
+
             self.print_quit_option()
 
             self.app_state.display_error_or_success_message()
-
+            
             raw = click.prompt("\nChoix", type=str).strip().upper()
+
             if raw in {"0", "R"} or raw.isdigit():
-                return raw
+                if raw == "0":
+                    self.view_exit()
+                    return "0"
+                
+                if raw == "R":
+                    if logout:
+                        self.view_logout()
+                        return "R"
+                    return "R"
+
+                if 0 < int(raw) <= len(items):
+                    return int(raw)
+
             self.app_state.set_error_message("[red]Choix invalide[/red]")

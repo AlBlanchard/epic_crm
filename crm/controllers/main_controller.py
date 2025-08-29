@@ -42,21 +42,20 @@ class MainController(AbstractController):
             user = self.user_menu_ctrl._get_current_user()
             allowed = self._filter_items_by_permissions(user, raw_items)
 
+            # Récupération des labels (noms des actions)
             labels = [label for label, _ in allowed]
             choice = self.view.run_menu(title=title, items=labels, logout=logout)
 
             if choice == "0":
-                self.view._clear_screen()
-                self.view.console.print("\n[bold green]Au revoir ![/bold green]\n")
-                sys.exit(0)  # Quitter l'appli
+                sys.exit(0)
+                
             if choice == "R":
-                if logout:
-                    self.view._clear_screen()
-                    self.view.console.print("\n[bold yellow]Déconnexion...[/bold yellow]\n")
+                if logout :
                     self.auth_ctrl.logout()
                 break
 
-            if choice.isdigit():
+            # Sélectionne l'action en fonction du choix retourné
+            if isinstance(choice, int):
                 idx = int(choice) - 1
                 if 0 <= idx < len(allowed):
                     _, action = allowed[idx]
