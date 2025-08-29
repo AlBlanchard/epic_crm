@@ -112,7 +112,9 @@ class EventController(AbstractController):
 
     def create_note(self, event_id: int, note: str):
         me = self._get_current_user()
-        if not Permission.update_permission(me, "event"):
+        if not Permission.update_permission(
+            me, "event", owner_id=self.get_support_contact_id(event_id)
+        ):
             raise PermissionError("Accès refusé.")
 
         ev = self.events.get_by_id(event_id)
@@ -187,4 +189,3 @@ class EventController(AbstractController):
             self.events.delete_note(note_id)
         except ValueError:
             raise ValueError("Note introuvable.")
-

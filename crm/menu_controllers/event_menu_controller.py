@@ -111,8 +111,6 @@ class EventMenuController(AbstractController):
 
     def show_add_event_note(self, event_id: int | None = None):
         me = self.event_ctrl._get_current_user()
-        if not Permission.update_permission(me, "event", event_id):
-            raise PermissionError("Accès refusé.")
 
         if not event_id:
             if Permission.update_permission(me, "event"):
@@ -126,6 +124,11 @@ class EventMenuController(AbstractController):
             if selected_id is None:
                 return
             event_id = selected_id
+
+            if not Permission.update_permission(
+                me, "event", owner_id=self.event_ctrl.get_support_contact_id(event_id)
+            ):
+                raise PermissionError("Accès refusé.")
 
         note = self.view.add_event_note_flow()
 
@@ -139,8 +142,6 @@ class EventMenuController(AbstractController):
 
     def show_delete_note(self, event_id: int | None = None):
         me = self._get_current_user()
-        if not Permission.update_permission(me, "event", event_id):
-            raise PermissionError("Accès refusé.")
 
         if not event_id:
             if Permission.update_permission(me, "event"):
@@ -154,6 +155,11 @@ class EventMenuController(AbstractController):
             if selected_id is None:
                 return
             event_id = selected_id
+
+            if not Permission.update_permission(
+                me, "event", owner_id=self.event_ctrl.get_support_contact_id(event_id)
+            ):
+                raise PermissionError("Accès refusé.")
 
         notes_list = self.event_ctrl.list_event_notes(event_id)
         selected_note_id = self.view.list_notes(notes_list, selector=True)
