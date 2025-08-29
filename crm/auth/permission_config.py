@@ -41,7 +41,14 @@ ROLE_RULES: dict[str, dict[str, set[Crud]]] = {
         "client": {Crud.READ},
         "contract": {Crud.CREATE, Crud.READ, Crud.UPDATE},
         "event": {Crud.READ, Crud.UPDATE},
-        "user": {Crud.CREATE, Crud.READ, Crud.UPDATE, Crud.DELETE, Crud.UPDATE_OWN},
+        "user": {
+            Crud.CREATE,
+            Crud.READ,
+            Crud.READ_OWN,
+            Crud.UPDATE,
+            Crud.DELETE,
+            Crud.UPDATE_OWN,
+        },
         # Attention ici il s'agit de la classe UserRole qui fait le lien entre User et Role
         # Les managers ont le droit d'associer des rôles aux utilisateurs (et de les enlever)
         "user_role": {Crud.CREATE, Crud.DELETE},
