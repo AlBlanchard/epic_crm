@@ -10,6 +10,7 @@ from ..errors.exceptions import UserCancelledInput
 from decimal import Decimal
 from ..utils.validations import Validations
 
+
 class ContractMenuController(AbstractController):
     def _setup_services(self) -> None:
         self.view = ContractView()
@@ -41,7 +42,9 @@ class ContractMenuController(AbstractController):
 
         try:
             self.contract_ctrl.create_contract(data)
-            self.view.app_state.set_success_message("Le contrat a été créé avec succès.")
+            self.view.app_state.set_success_message(
+                "Le contrat a été créé avec succès."
+            )
         except Exception as e:
             if self.view.app_state:
                 self.view.app_state.set_error_message(str(e))
@@ -55,7 +58,7 @@ class ContractMenuController(AbstractController):
         want_filter = self.view.list_all(rows, has_filter=True)
 
         if want_filter:
-            self.filter_ctrl.show_filter_menu()
+            self.filter_ctrl.show_filter_menu(entity="contracts")
 
     def show_sign_contract(self, contract_id: int | None = None):
         me = self._get_current_user()
@@ -67,12 +70,16 @@ class ContractMenuController(AbstractController):
                 rows = self.contract_ctrl.list_unsigned_contracts()
             # Peut il seulement update ses propres contrats ? On liste ses propres contrats
             elif Permission.update_own_permission(me, "contract"):
-                rows = self.contract_ctrl.list_unsigned_contracts(sales_contact_id=me.id)
+                rows = self.contract_ctrl.list_unsigned_contracts(
+                    sales_contact_id=me.id
+                )
             else:
                 raise PermissionError("Accès refusé.")
 
             # Liste pour selectionner le contrat à modifier
-            selected_id = self.view.list_all(rows, selector=True, title="Contrats Non Signés")
+            selected_id = self.view.list_all(
+                rows, selector=True, title="Contrats Non Signés"
+            )
             if selected_id is None:
                 return
             contract_id = selected_id
@@ -94,11 +101,15 @@ class ContractMenuController(AbstractController):
 
         try:
             self.contract_ctrl.update_contract(contract_id, payload)
-            self.view.app_state.set_success_message("Le contrat a été mis à jour avec succès.")
+            self.view.app_state.set_success_message(
+                "Le contrat a été mis à jour avec succès."
+            )
         except Exception as e:
             self.view.app_state.set_error_message(str(e))
 
-    def show_update_contract_amount(self, contract_id: int | None = None, payment_amount: Decimal | None = None):
+    def show_update_contract_amount(
+        self, contract_id: int | None = None, payment_amount: Decimal | None = None
+    ):
         me = self._get_current_user()
 
         if not contract_id:
@@ -164,7 +175,8 @@ class ContractMenuController(AbstractController):
 
         try:
             self.contract_ctrl.delete_contract(contract_id)
-            self.view.app_state.set_success_message("Le contrat a été supprimé avec succès.")
+            self.view.app_state.set_success_message(
+                "Le contrat a été supprimé avec succès."
+            )
         except Exception as e:
             self.view.app_state.set_error_message(str(e))
-

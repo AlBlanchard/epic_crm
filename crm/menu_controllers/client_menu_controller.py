@@ -8,6 +8,7 @@ from ..auth.permission_config import ROLE_ADMIN, ROLE_SALES
 from ..controllers.filter_controller import FilterController
 from ..utils.validations import Validations
 
+
 class ClientMenuController(AbstractController):
 
     def _setup_services(self):
@@ -17,10 +18,9 @@ class ClientMenuController(AbstractController):
         self.client_ctrl = ClientController()
         self.filter_ctrl = FilterController()
 
-
     def show_create_client(self) -> None:
         try:
-        # Il y a une vérif dans le ctrl mais on la refait ici sinon ça lance les prompts
+            # Il y a une vérif dans le ctrl mais on la refait ici sinon ça lance les prompts
             me = self._get_current_user()
             if not Permission.create_permission(me, "client"):
                 raise PermissionError("Accès refusé.")
@@ -35,7 +35,6 @@ class ClientMenuController(AbstractController):
             if self.view.app_state:
                 self.view.app_state.set_error_message(str(e))
 
-
     def show_list_clients(self) -> None:
         me = self.client_ctrl._get_current_user()
         if not Permission.read_permission(me, "client"):
@@ -46,7 +45,7 @@ class ClientMenuController(AbstractController):
             want_filter = self.view.list_all(rows, has_filter=True)
 
             if want_filter:
-                self.filter_ctrl.show_filter_menu()
+                self.filter_ctrl.show_filter_menu(entity="clients")
         except Exception as e:
             if self.view.app_state:
                 self.view.app_state.set_error_message(str(e))
@@ -85,11 +84,15 @@ class ClientMenuController(AbstractController):
 
         try:
             self.client_ctrl.update_client(client_id, payload)
-            self.view.app_state.set_success_message("Le client a été mis à jour avec succès.")
+            self.view.app_state.set_success_message(
+                "Le client a été mis à jour avec succès."
+            )
         except Exception as e:
             self.view.app_state.set_error_message(str(e))
 
-    def show_update_sales_contact(self, client_id: int | None = None, new_sales_id: int | None = None) -> None:
+    def show_update_sales_contact(
+        self, client_id: int | None = None, new_sales_id: int | None = None
+    ) -> None:
         me = self.client_ctrl._get_current_user()
         if not Permission.is_admin(me):
             raise PermissionError("Accès refusé.")
@@ -144,6 +147,8 @@ class ClientMenuController(AbstractController):
 
         try:
             self.client_ctrl.delete_client(client_id)
-            self.view.app_state.set_success_message("Le client a été supprimé avec succès.")
+            self.view.app_state.set_success_message(
+                "Le client a été supprimé avec succès."
+            )
         except Exception as e:
             self.view.app_state.set_error_message(str(e))

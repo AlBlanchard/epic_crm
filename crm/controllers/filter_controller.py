@@ -1,12 +1,12 @@
 from typing import Any, Dict, List, Optional
+import click
 
+from ..views.filter_view import FilterView
 from ..controllers.client_controller import ClientController
 from ..controllers.contract_controller import ContractController
 from ..controllers.event_controller import EventController
-
 from ..crud.base_crud import AbstractBaseCRUD
 from ..controllers.base import AbstractController
-
 from ..utils.app_state import AppState
 
 ENTITY_TO_CONTROLLER = {
@@ -53,6 +53,7 @@ class FilterController(AbstractController):
     def _setup_services(self) -> None:
         self.crud = AbstractBaseCRUD(self.session)
         self.app_state = AppState()
+        self.view = FilterView()
         self.controllers = {
             entity: ControllerCls(self.session)
             for entity, ControllerCls in ENTITY_TO_CONTROLLER.items()
@@ -81,5 +82,19 @@ class FilterController(AbstractController):
                 f"Erreur lors de la récupération des entités filtrées : {e}"
             )
 
-    def show_filter_menu(self):
-        pass
+    def show_filter_menu(self, entity: Optional[str] = None) -> None:
+        if entity is None:
+            self.app_state.set_error_message("Veuillez spécifier une entité à filtrer.")
+            return
+
+        field_dict = self.view.choose_filter(entity, AUTHORIZED_FILTERS)
+        if field_dict is None:
+            self.app_state.set_error_message("Veuillez spécifier un filtre.")
+            return
+        filter = self.view.enter_filter_criteria(field_dict)
+        if filter is None:
+            self.app_state.set_error_message("Veuillez spécifier un filtre.")
+            return
+
+        result = self.list_filtered(entity, filter)
+        self.view.list_filtered(entity, result)

@@ -9,24 +9,26 @@ from ..errors.exceptions import UserCancelledInput
 from ..controllers.user_controller import UserController
 from ..controllers.role_controller import RoleController
 
+
 class UserMenuController(AbstractController):
     def _setup_services(self) -> None:
         self.view = UserView()
         self.user_ctrl = UserController()
         self.role_ctrl = RoleController()
-        
 
-    def show_user_list(self, user_id: int = None, selector: bool = False):
+    def show_user_list(self, user_id: int | None = None, selector: bool = False):
         """Affiche la liste des utilisateurs."""
         me = self.user_ctrl._get_current_user()
         if not Permission.read_permission(me, "user"):
             if not Permission.read_permission(me, "user", owner_id=user_id):
                 raise PermissionError("Accès refusé.")
 
-        rows = self.user_ctrl.get_all_users(filters={"id": user_id} if user_id else None)
+        rows = self.user_ctrl.get_all_users(
+            filters={"id": user_id} if user_id else None
+        )
         return self.view.list_users(rows, selector)
 
-    def show_update_password(self, user_id: int):
+    def show_update_password(self, user_id: int | None = None):
         """Affiche le formulaire de mise à jour du mot de passe."""
         me = self.user_ctrl._get_current_user()
         if user_id:
@@ -100,7 +102,9 @@ class UserMenuController(AbstractController):
             new_user = self.user_ctrl.create_user(data)
             self.user_ctrl.add_role(new_user["id"], int(role_id), create_new_user=True)
 
-            self.view.app_state.set_success_message("L'utilisateur a été créé avec succès.")
+            self.view.app_state.set_success_message(
+                "L'utilisateur a été créé avec succès."
+            )
         except Exception as e:
             if self.view.app_state:
                 self.view.app_state.set_error_message(str(e))
@@ -108,9 +112,10 @@ class UserMenuController(AbstractController):
     def show_update_user_infos(self, user_id: int) -> None:
         if not user_id:
             rows = self.user_ctrl.get_all_users()
-            user_id = self.user_ctrl.list_users(rows, selector=True)
-            if not user_id:
+            selected_id = self.view.list_users(rows, selector=True)
+            if not selected_id:
                 return
+            user_id = selected_id
 
         me = self.user_ctrl._get_current_user()
         if not Permission.update_permission(me, "user"):
@@ -136,7 +141,7 @@ class UserMenuController(AbstractController):
 
     def show_delete_user(self, user_id: int | None = None) -> None:
         """Affiche le formulaire de suppression d'un utilisateur."""
-            # Sélection de l'utilisateur si pas d'id transmis
+        # Sélection de l'utilisateur si pas d'id transmis
         if not user_id:
             rows = self.user_ctrl.get_all_users()
             user_id = self.view.list_users(rows, selector=True)
@@ -161,11 +166,15 @@ class UserMenuController(AbstractController):
 
         try:
             self.user_ctrl.delete_user(user["id"])
-            self.view.app_state.set_success_message("L'utilisateur a été supprimé avec succès.")
+            self.view.app_state.set_success_message(
+                "L'utilisateur a été supprimé avec succès."
+            )
         except Exception as e:
             self.view.app_state.set_error_message(str(e))
 
-    def show_add_user_role(self, user_id: int, role_id: int | None = None):
+    def show_add_user_role(
+        self, user_id: int | None = None, role_id: int | None = None
+    ):
         # Sélection de l'utilisateur si pas d'id transmis
         if not user_id:
             rows = self.user_ctrl.get_all_users()
@@ -199,7 +208,9 @@ class UserMenuController(AbstractController):
             if self.view.app_state:
                 self.view.app_state.set_error_message(str(e))
 
-    def show_remove_user_role(self, user_id: int | None = None, role_name: str | None = None) -> None:
+    def show_remove_user_role(
+        self, user_id: int | None = None, role_name: str | None = None
+    ) -> None:
         # Sélection de l'utilisateur si pas d'id transmis
         if not user_id:
             rows = self.user_ctrl.get_all_users()

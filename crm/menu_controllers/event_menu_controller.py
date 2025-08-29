@@ -9,6 +9,7 @@ from ..views.user_view import UserView
 from ..auth.permission import Permission
 from ..utils.validations import Validations
 
+
 class EventMenuController(AbstractController):
     def _setup_services(self) -> None:
         self.view = EventView()
@@ -51,7 +52,9 @@ class EventMenuController(AbstractController):
 
         try:
             self.event_ctrl.create_event(data)
-            self.view.app_state.set_success_message("L'événement a été créé avec succès.")
+            self.view.app_state.set_success_message(
+                "L'événement a été créé avec succès."
+            )
         except Exception as e:
             if self.view.app_state:
                 self.view.app_state.set_error_message(str(e))
@@ -66,7 +69,7 @@ class EventMenuController(AbstractController):
             want_filter = self.view.list_all(rows, has_filter=True)
 
             if want_filter:
-                self.filter_ctrl.show_filter_menu()
+                self.filter_ctrl.show_filter_menu(entity="events")
         except Exception as e:
             if self.view.app_state:
                 self.view.app_state.set_error_message(str(e))
@@ -100,7 +103,9 @@ class EventMenuController(AbstractController):
 
         try:
             self.event_ctrl.update_event(event_id, new_data)
-            self.view.app_state.set_success_message("L'événement a été mis à jour avec succès.")
+            self.view.app_state.set_success_message(
+                "L'événement a été mis à jour avec succès."
+            )
         except Exception as e:
             self.view.app_state.set_error_message(str(e))
 
@@ -126,7 +131,9 @@ class EventMenuController(AbstractController):
 
         try:
             self.event_ctrl.create_note(event_id, note)
-            self.view.app_state.set_success_message("La note a été ajoutée avec succès.")
+            self.view.app_state.set_success_message(
+                "La note a été ajoutée avec succès."
+            )
         except Exception as e:
             self.view.app_state.set_error_message(str(e))
 
@@ -155,11 +162,15 @@ class EventMenuController(AbstractController):
 
         try:
             self.event_ctrl.delete_note(event_id, selected_note_id)
-            self.view.app_state.set_success_message("La note a été supprimée avec succès.")
+            self.view.app_state.set_success_message(
+                "La note a été supprimée avec succès."
+            )
         except Exception as e:
             self.view.app_state.set_error_message(str(e))
 
-    def show_update_support(self, event_id: int | None = None, new_support_id: int | None = None) -> None:
+    def show_update_support(
+        self, event_id: int | None = None, new_support_id: int | None = None
+    ) -> None:
         me = self.event_ctrl._get_current_user()
         if not Permission.update_permission(me, "event", event_id):
             raise PermissionError("Accès refusé.")
@@ -194,7 +205,9 @@ class EventMenuController(AbstractController):
 
         try:
             self.event_ctrl.update_event(event_id, payload)
-            self.view.app_state.set_success_message("L'événement a été mis à jour avec succès.")
+            self.view.app_state.set_success_message(
+                "L'événement a été mis à jour avec succès."
+            )
         except Exception as e:
             self.view.app_state.set_error_message(str(e))
 
@@ -224,6 +237,8 @@ class EventMenuController(AbstractController):
 
         try:
             self.event_ctrl.delete_event(event_id)
-            self.view.app_state.set_success_message("L'événement a été supprimé avec succès.")
+            self.view.app_state.set_success_message(
+                "L'événement a été supprimé avec succès."
+            )
         except Exception as e:
             self.view.app_state.set_error_message(str(e))

@@ -69,7 +69,7 @@ class FilterView(BaseView):
             return None
 
         # Convertit l'index choisi (1..n) vers l'élément AUTHORIZED_FILTERS
-        return defs[idx - 1]
+        return defs[int(idx) - 1]
 
     def enter_filter_criteria(
         self, field_dict: Dict[str, str]
