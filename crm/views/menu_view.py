@@ -1,11 +1,13 @@
 import click
 from .view import BaseView
 from ..utils.app_state import AppState
+
+
 class MenuView(BaseView):
     def _setup_services(self) -> None:
         self.app_state = AppState()
 
-    def run_menu(self, title: str, items: list[str], logout: bool = False) -> str:
+    def run_menu(self, title: str, items: list[str], logout: bool = False) -> str | int:
         """
         Affiche un menu et retourne la clé choisie.
         items: liste de labels (les numéros sont ajoutés automatiquement)
@@ -28,14 +30,14 @@ class MenuView(BaseView):
             self.print_quit_option()
 
             self.app_state.display_error_or_success_message()
-            
+
             raw = click.prompt("\nChoix", type=str).strip().upper()
 
             if raw in {"0", "R"} or raw.isdigit():
                 if raw == "0":
                     self.view_exit()
                     return "0"
-                
+
                 if raw == "R":
                     if logout:
                         self.view_logout()

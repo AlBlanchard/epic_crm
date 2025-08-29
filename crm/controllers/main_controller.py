@@ -1,5 +1,8 @@
 import sys
 from .base import AbstractController
+from rich.console import Console
+from crm.utils.app_state import AppState
+
 from ..menu_controllers.user_menu_controller import UserMenuController
 from ..menu_controllers.client_menu_controller import ClientMenuController
 from ..menu_controllers.contract_menu_controller import ContractMenuController
@@ -11,8 +14,6 @@ from ..auth.permission import Permission
 from ..controllers.auth_controller import AuthController
 
 
-
-
 class MainController(AbstractController):
     def _setup_services(self):
         self.view = MenuView()
@@ -22,12 +23,17 @@ class MainController(AbstractController):
         self.event_menu_ctrl = EventMenuController()
         self.user_ctrl = UserController()
         self.auth_ctrl = AuthController()
+        self.console = Console()
+        self.app_state = AppState()
+        self.auth_ctrl = AuthController()
 
     def _filter_items_by_permissions(self, user, raw_items):
         """Filtre les actions autorisées selon les permissions"""
         allowed = []
         for label, action, ops, resource in raw_items:
-            if any(Permission.has_permission(user, resource=resource, op=op) for op in ops):
+            if any(
+                Permission.has_permission(user, resource=resource, op=op) for op in ops
+            ):
                 allowed.append((label, action))
         return allowed
 
@@ -38,6 +44,7 @@ class MainController(AbstractController):
         - affiche le menu
         - exécute l'action choisie
         """
+        # Chaque sous menu est autonome, permet de rester dans la boucle à chaque retour
         while True:
             user = self.user_menu_ctrl._get_current_user()
             allowed = self._filter_items_by_permissions(user, raw_items)
@@ -48,9 +55,9 @@ class MainController(AbstractController):
 
             if choice == "0":
                 sys.exit(0)
-                
+
             if choice == "R":
-                if logout :
+                if logout:
                     self.auth_ctrl.logout()
                 break
 
@@ -60,8 +67,16 @@ class MainController(AbstractController):
                 if 0 <= idx < len(allowed):
                     _, action = allowed[idx]
                     action()
-    
+
     def run(self):
+        # Vérif auth
+        if not self.auth_ctrl.me_safe():
+            self.console.print("[bold yellow]Connexion requise.[/bold yellow]")
+            self.auth_ctrl.login_interactive()
+
+        self.show_main_menu()
+
+    def show_main_menu(self):
         """Menu principal"""
         raw_items = [
             ("Mon profil", self.show_menu_my_profile, [Crud.READ_OWN], "user"),
@@ -209,7 +224,7 @@ class MainController(AbstractController):
                 "event",
             ),
         ]
-            
+
         self._run_generic_menu("-- Evénements --", raw_items)
 
     def show_menu_users(self):
@@ -229,7 +244,8 @@ class MainController(AbstractController):
             (
                 "Modifier un utilisateur",
                 # En lambda pour éviter que la fonction ne se lance d'office
-                lambda: self.show_menu_modify_user(self.user_menu_ctrl.show_user_list(selector=True)),
+                lambda: (user_id := self.user_menu_ctrl.show_user_list(selector=True))
+                and self.show_menu_modify_user(user_id),
                 [Crud.UPDATE],
                 "user",
             ),

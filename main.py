@@ -18,34 +18,21 @@ install_global_exception_hook()
 @click.pass_context
 def cli(ctx: click.Context):
     """
-    CRM CLI — vérifie l'auth à l'ouverture, puis lance un menu par défaut.
-    Les objets partagés (console, app_state, vues) sont stockés dans ctx.obj.
+    CRM CLI — point d'entrée.
+    - Commandes techniques : init, reset-hard, login, logout
+    - Sinon : lance l'application via MainController
     """
-    # Contexte partagé
+    # Contexte partagé (console + état global)
     ctx.ensure_object(dict)
     if "console" not in ctx.obj:
         ctx.obj["console"] = Console()
     if "app_state" not in ctx.obj:
         ctx.obj["app_state"] = AppState
 
-    console: Console = ctx.obj["console"]
-
-    # Instancie AuthView une seule fois et la stocke
-    if "auth_view" not in ctx.obj:
-        ctx.obj["auth_view"] = AuthView()
-    auth_view: AuthView = ctx.obj["auth_view"]
-
-    # Laisse passer login/logout sans authentification préalable
-    if ctx.invoked_subcommand in {"login", "logout", "init"}:
-        return
-
-    # Vérifie l'auth sinon
-    if not auth_view.ensure_authenticated():
-        console.print("[bold yellow]Connexion requise.[/bold yellow]")
-        ctx.invoke(login_cmd)
-
-    app = MainController()
-    app.run()
+    # Si aucune commande CLI -> on lance l'application
+    if ctx.invoked_subcommand is None:
+        app = MainController()
+        app.run()
 
 
 # Commandes DB
@@ -59,5 +46,3 @@ cli.add_command(logout_cmd)
 
 if __name__ == "__main__":
     cli()
-
-    

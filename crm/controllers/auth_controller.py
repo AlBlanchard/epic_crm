@@ -1,9 +1,14 @@
+from getpass import getpass
+from rich.console import Console
+
 from typing import Dict, Any, Optional
 from .base import AbstractController
 from ..auth.auth import Authentication
 from ..auth.auth import JTIManager
 from ..crud.user_crud import UserCRUD
 from ..serializers.user_serializer import UserSerializer
+
+console = Console()
 
 
 class AuthController(AbstractController):
@@ -14,6 +19,28 @@ class AuthController(AbstractController):
         self.serializer = UserSerializer()
         self.jti_store = JTIManager()
 
+    # --- Flux interactifs ---
+    def login_interactive(self) -> bool:
+        """Demande login/pass et appelle self.login()."""
+        username = input("Nom d'utilisateur: ")
+        password = getpass("Mot de passe: ")
+
+        try:
+            result = self.login(username, password)
+            console.print(
+                f"[green]{result['message']}[/green] Bienvenue, [bold]{username}[/bold]!"
+            )
+            return True
+        except Exception as e:
+            console.print(f"[red]Échec de connexion : {e}[/red]")
+            return False
+
+    def logout_interactive(self) -> None:
+        """Appelle self.logout() et affiche le message."""
+        result = self.logout()
+        console.print(f"[yellow]{result['message']}[/yellow]")
+
+    # --- Authentification ---
     def login(self, username: str, password: str) -> Dict[str, Any]:
         """
         1) Auth via Authentication.authenticate_user
@@ -63,6 +90,13 @@ class AuthController(AbstractController):
         if not user:
             raise ValueError("Utilisateur introuvable.")
         return self.serializer.serialize(user)
+
+    def me_safe(self):
+        """Petit wrapper safe pour ne pas lever une exception si pas connecté"""
+        try:
+            return self.me()
+        except Exception:
+            return None
 
     def refresh(self, refresh_token: str) -> Dict[str, Any]:
         """

@@ -117,7 +117,7 @@ python main.py reset-hard
 
 ----------
 
-## Lancer l’application
+## Lancer l'application
 
 Interface menu (mode interactif) :
 
@@ -142,7 +142,7 @@ logout           # Se déconnecter
 
 ## Journalisation & Sentry
 
-Le projet s’intègre à **Sentry** pour :
+Le projet s'intègre à **Sentry** pour :
 
 -   **Exceptions non gérées** (via `sys.excepthook`) → issues Sentry
     
