@@ -8,6 +8,7 @@ from ..utils.validations import Validations
 from ..errors.exceptions import UserCancelledInput
 from ..controllers.user_controller import UserController
 from ..controllers.role_controller import RoleController
+from ..utils.audit_decorators import audit_command
 
 
 class UserMenuController(AbstractController):
@@ -28,6 +29,9 @@ class UserMenuController(AbstractController):
         )
         return self.view.list_users(rows, selector)
 
+    @audit_command(
+        category="user", action="update_password", event_level_on_success="warning"
+    )
     def show_update_password(self, user_id: int | None = None):
         """Affiche le formulaire de mise à jour du mot de passe."""
         me = self.user_ctrl._get_current_user()
@@ -85,6 +89,7 @@ class UserMenuController(AbstractController):
             if self.view.app_state:
                 self.view.app_state.set_error_message(str(e))
 
+    @audit_command(category="user", action="create", event_level_on_success="info")
     def show_create_user(self) -> None:
         """Affiche le formulaire de création d'un utilisateur."""
         me = self.user_ctrl._get_current_user()
@@ -109,6 +114,7 @@ class UserMenuController(AbstractController):
             if self.view.app_state:
                 self.view.app_state.set_error_message(str(e))
 
+    @audit_command(category="user", action="update", event_level_on_success="info")
     def show_update_user_infos(self, user_id: int) -> None:
         if not user_id:
             rows = self.user_ctrl.get_all_users()
@@ -139,6 +145,7 @@ class UserMenuController(AbstractController):
             if self.view.app_state:
                 self.view.app_state.set_error_message(str(e))
 
+    @audit_command(category="user", action="delete", event_level_on_success="warning")
     def show_delete_user(self, user_id: int | None = None) -> None:
         """Affiche le formulaire de suppression d'un utilisateur."""
         # Sélection de l'utilisateur si pas d'id transmis
@@ -172,6 +179,7 @@ class UserMenuController(AbstractController):
         except Exception as e:
             self.view.app_state.set_error_message(str(e))
 
+    @audit_command(category="user", action="update", event_level_on_success="info")
     def show_add_user_role(
         self, user_id: int | None = None, role_id: int | None = None
     ):
@@ -208,6 +216,7 @@ class UserMenuController(AbstractController):
             if self.view.app_state:
                 self.view.app_state.set_error_message(str(e))
 
+    @audit_command(category="user", action="update", event_level_on_success="info")
     def show_remove_user_role(
         self, user_id: int | None = None, role_name: str | None = None
     ) -> None:

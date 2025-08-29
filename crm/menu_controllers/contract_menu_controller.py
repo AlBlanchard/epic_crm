@@ -1,3 +1,4 @@
+from crm.utils.audit_decorators import audit_command
 from ..controllers.base import AbstractController
 from ..views.contract_view import ContractView
 from ..controllers.contract_controller import ContractController
@@ -60,6 +61,7 @@ class ContractMenuController(AbstractController):
         if want_filter:
             self.filter_ctrl.show_filter_menu(entity="contracts")
 
+    @audit_command(category="contract", action="sign", event_level_on_success="info")
     def show_sign_contract(self, contract_id: int | None = None):
         me = self._get_current_user()
 
