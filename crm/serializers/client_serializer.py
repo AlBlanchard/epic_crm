@@ -47,6 +47,17 @@ class ClientSerializer:
         for col in client.__table__.columns:
             name = col.name
             if name in self.fields:
+                # Validations
+                if name == "email":
+                    self.valid.validate_email(getattr(client, name))
+                if name == "phone":
+                    self.valid.validate_phone(getattr(client, name))
+                if name == "company_name":
+                    self.valid.validate_str_max_length(
+                        getattr(client, name), max_length=200
+                    )
+                if name == "full_name":
+                    self.valid.validate_str_max_length(getattr(client, name))
                 data[name] = self._to_iso(getattr(client, name))
 
         # Champs calculés

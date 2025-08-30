@@ -125,6 +125,8 @@ class Validations:
 
     @staticmethod
     def validate_phone(phone: str) -> None:
+        if phone == "":
+            raise ValueError("Le numéro de téléphone ne peut pas être vide.")
         if len(phone) > 15:
             raise ValueError(
                 "Le numéro de téléphone ne doit pas dépasser 15 caractères."

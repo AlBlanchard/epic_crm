@@ -21,7 +21,9 @@ class Permission:
     def user_roles_list(user) -> list[str]:
         if not user or not hasattr(user, "roles"):
             raise ValueError("L'utilisateur doit avoir des rôles définis.")
-        return [role.name for role in user.roles]
+        return [
+            role.name.lower() for role in user.roles
+        ]  # <-- normalisation en minuscules
 
     @staticmethod
     def role_allows(user, resource: str, op: Crud) -> bool:

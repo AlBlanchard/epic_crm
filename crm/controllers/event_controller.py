@@ -185,7 +185,6 @@ class EventController(AbstractController):
         if not Permission.update_permission(me, "event", owner_id=owner_id):
             raise PermissionError("Accès refusé.")
 
-        try:
-            self.events.delete_note(note_id)
-        except ValueError:
+        ok = self.events.delete_note(note_id)
+        if not ok:
             raise ValueError("Note introuvable.")

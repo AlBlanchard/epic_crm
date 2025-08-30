@@ -30,3 +30,8 @@ class UserRole(Base):
 
     def __repr__(self) -> str:
         return f"<UserRole(user_id={self.user_id}, role_id={self.role_id})>"
+
+    try:
+        from ..tests.conftest import TestingBase as BaseForTests
+    except ImportError:
+        from .base import AbstractBase as BaseForTests

@@ -141,6 +141,10 @@ class UserCRUD(AbstractBaseCRUD):
             user_role = UserRole(user_id=user_id, role_id=role_id)
             self.session.add(user_role)
             self.session.commit()
+            user = self.session.get(User, user_id)
+            if user:
+                self.session.refresh(user)
+
             return True
         except IntegrityError:
             self.session.rollback()

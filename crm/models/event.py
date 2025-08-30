@@ -109,6 +109,11 @@ class Event(AbstractBase):
 
         return value
 
+    try:
+        from ..tests.conftest import TestingBase as BaseForTests
+    except ImportError:
+        from .base import AbstractBase as BaseForTests
+
 
 class EventNote(AbstractBase):
     __tablename__ = "event_notes"
@@ -122,3 +127,8 @@ class EventNote(AbstractBase):
 
     def __repr__(self) -> str:
         return f"<EventNote(id={self.id}, event_id={self.event_id})>"
+
+    try:
+        from ..tests.conftest import TestingBase as BaseForTests
+    except ImportError:
+        from .base import AbstractBase as BaseForTests

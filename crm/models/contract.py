@@ -131,3 +131,8 @@ class Contract(AbstractBase):
                 raise ValueError("amount_due cannot exceed amount_total")
 
         return value
+
+    try:
+        from ..tests.conftest import TestingBase as BaseForTests
+    except ImportError:
+        from .base import AbstractBase as BaseForTests

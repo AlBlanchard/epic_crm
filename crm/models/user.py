@@ -101,9 +101,14 @@ class User(AbstractBase):
             session.rollback()
             raise ValueError(f"Impossible de retirer le rôle : {str(e)}")
 
-        def __repr__(self) -> str:
-            role_names = ", ".join([role.name for role in self.roles])
-            return (
-                f"<User(id={self.id}, username='{self.username}', "
-                f"employee_number={self.employee_number}, roles=[{role_names}])>"
-            )
+    def __repr__(self) -> str:
+        role_names = ", ".join([role.name for role in self.roles])
+        return (
+            f"<User(id={self.id}, username='{self.username}', "
+            f"employee_number={self.employee_number}, roles=[{role_names}])>"
+        )
+
+    try:
+        from ..tests.conftest import TestingBase as BaseForTests
+    except ImportError:
+        from .base import AbstractBase as BaseForTests

@@ -46,6 +46,11 @@ class ContractSerializer:
         for col in contract.__table__.columns:
             name = col.name
             if name in self.fields:
+                # Validations
+                if name == "amount_total":
+                    self.valid.validate_currency(getattr(contract, name))
+                if name == "amount_due":
+                    self.valid.validate_currency(getattr(contract, name))
                 data[name] = self._to_iso(getattr(contract, name))
 
         # Champs calculés

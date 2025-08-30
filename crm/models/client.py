@@ -1,5 +1,3 @@
-import re
-
 from sqlalchemy import (
     Integer,
     String,
@@ -33,7 +31,12 @@ class Client(AbstractBase):
     )
 
     sales_contact = relationship("User", back_populates="clients")
-    contracts = relationship("Contract", back_populates="client")
+    contracts = relationship(
+        "Contract",
+        back_populates="client",
+        cascade="all, delete-orphan",
+        passive_deletes=True,  # important pour SQLite
+    )
 
     # Permet de faire des recherches SQL sur des champs propriétés (filtre, etc...)
     # Doit garder le même nom que l'expression ci-dessous, ignore sinon l'IDE râle.
@@ -73,3 +76,8 @@ class Client(AbstractBase):
         Validations.validate_phone(value)
 
         return value
+
+    try:
+        from ..tests.conftest import TestingBase as BaseForTests
+    except ImportError:
+        from .base import AbstractBase as BaseForTests
