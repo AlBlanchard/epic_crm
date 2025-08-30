@@ -68,7 +68,7 @@ def init_sentry():
 
     sentry_sdk.init(
         dsn=dsn,
-        environment=os.getenv("SENTRY_ENV", "prod"),
+        environment=os.getenv("SENTRY_ENV", "dev"),
         release=os.getenv("SENTRY_RELEASE", "epic-crm@1.0.0"),
         integrations=[sentry_logging],
         traces_sample_rate=0.0,  # active si tu veux le APM

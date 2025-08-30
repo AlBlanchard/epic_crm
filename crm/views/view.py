@@ -356,7 +356,6 @@ class BaseView(ABC):
                 return int(selected_id)
             return None
 
-
         if has_filter:
             return self.true_or_false("Souhaitez vous appliquer un filtre ?")
 
@@ -364,7 +363,7 @@ class BaseView(ABC):
         AppState.display_error_or_success_message()
         self.console.input()
         return None
-    
+
     def view_logout(self):
         self._clear_screen()
         self.console.print("\n[bold yellow]Déconnexion...[/bold yellow]\n")

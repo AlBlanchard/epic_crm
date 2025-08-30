@@ -95,6 +95,8 @@ JWT_REFRESH_TOKEN_EXPIRES=<durée en d (ex: 10d)>
 
 # Sentry (facultatif mais recommandé)
 SENTRY_DSN= https://<public_key>@sentry.io/<project_id>
+SENTRY_ENV=<dev ou prod> # En prod seulement les erreurs. En dev, tout.
+SENTRY_RELEASE=<la version d'Epic CRM>
 ```
 
 > Si `SENTRY_DSN` est vide, Sentry est simplement désactivé (aucun crash).
